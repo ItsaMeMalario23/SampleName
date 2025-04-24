@@ -10,9 +10,11 @@ add_executable(main)
 target_sources(main
 PRIVATE
     src/main.c
-    src/com.c
-    src/render.c
-    src/basicvertex.c
+    src/render/rendercom.c
+    src/render/renderertest.c
+    src/render/renderertex.c
+    src/render/renderer2D.c
+    src/render/rendererinstanced.c
     src/debug/rdebug.c
     src/debug/memtrack.c
 )
