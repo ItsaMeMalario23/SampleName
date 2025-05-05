@@ -2,6 +2,8 @@
 
 cls
 
+call "comp-shaders.bat"
+
 cmake -S . -B build
 cmake --build build
 
