@@ -17,6 +17,8 @@ static asciidata_t charbuf[ASCII2D_BUF_SIZE];
 static u32 numchars;
 static const asciidata_t* charbound = charbuf + ASCII2D_BUF_SIZE;
 
+SDL_Mutex* renderBufLock = NULL;
+
 // game object buf
 static gameobj_t objbuf[ASCII2D_OBJ_BUF_SIZE];
 static u32 objidx;
@@ -40,6 +42,13 @@ void renderInitWindow(context_t* restrict con, SDL_WindowFlags flags)
 
     if (!SDL_ClaimWindowForGPUDevice(con->dev, con->window)) {
         SDL_Log("Failed to claim window for GPU device");
+        return;
+    }
+
+    renderBufLock = SDL_CreateMutex();
+
+    if (!renderBufLock) {
+        SDL_Log("Failed to create render buffer lock");
         return;
     }
 
@@ -162,6 +171,95 @@ void renderInitPipeline(context_t* restrict con)
     SDL_ReleaseGPUTransferBuffer(con->dev, textransferbuf);
 }
 
+void renderDraw(context_t* restrict con)
+{
+    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(con->dev);
+
+    if (!cmdbuf) {
+        SDL_Log("Failed to acquire cmd buf: %s", SDL_GetError());
+        return;
+    }
+
+    SDL_GPUTexture* swapchain;
+
+    if (!SDL_WaitAndAcquireGPUSwapchainTexture(cmdbuf, con->window, &swapchain, NULL, NULL)) {
+        SDL_Log("Failed to acquire swapchain texture: %s", SDL_GetError());
+        return;
+    }
+
+    if (numchars && swapchain) {
+        asciidata_t* data = SDL_MapGPUTransferBuffer(con->dev, fragtransferbuf, true);
+
+        rAssert(numchars < ASCII2D_BUF_SIZE);
+
+        SDL_LockMutex(renderBufLock);
+        memcpy(data, charbuf, sizeof(asciidata_t) * numchars);
+        SDL_UnlockMutex(renderBufLock);
+
+        SDL_UnmapGPUTransferBuffer(con->dev, fragtransferbuf);
+
+        SDL_GPUCopyPass* copypass = SDL_BeginGPUCopyPass(cmdbuf);
+
+        SDL_UploadToGPUBuffer(
+            copypass,
+            &(SDL_GPUTransferBufferLocation) {
+                .transfer_buffer = fragtransferbuf,
+                .offset = 0
+            },
+            &(SDL_GPUBufferRegion) {
+                .buffer = fragdatabuf,
+                .offset = 0,
+                .size = numchars * sizeof(asciidata_t),
+            },
+            true
+        );
+
+        SDL_EndGPUCopyPass(copypass);
+
+        SDL_GPURenderPass* renderpass = SDL_BeginGPURenderPass(
+            cmdbuf,
+            &(SDL_GPUColorTargetInfo) {
+                .texture = swapchain,
+                .cycle = false,
+                .load_op = SDL_GPU_LOADOP_CLEAR,
+                .store_op = SDL_GPU_STOREOP_STORE,
+                .clear_color = (SDL_FColor) {0.0f, 0.0f, 0.0f, 1.0f}
+            },
+            1,
+            NULL
+        );
+
+        SDL_BindGPUGraphicsPipeline(renderpass, pipeline);
+        SDL_BindGPUVertexStorageBuffers(renderpass, 0, &fragdatabuf, 1);
+        SDL_BindGPUFragmentSamplers(renderpass, 0, &(SDL_GPUTextureSamplerBinding) {.texture = texture, .sampler = sampler}, 1);
+
+        SDL_DrawGPUPrimitives(renderpass, numchars * 6, 1, 0, 0);
+
+        SDL_EndGPURenderPass(renderpass);
+    }
+
+    SDL_SubmitGPUCommandBuffer(cmdbuf);
+}
+
+void renderCleanupWindow(context_t* restrict con)
+{
+    SDL_ReleaseWindowFromGPUDevice(con->dev, con->window);
+    SDL_DestroyWindow(con->window);
+    SDL_DestroyGPUDevice(con->dev);
+}
+
+void renderCleanupPipeline(context_t* restrict con)
+{
+    SDL_ReleaseGPUGraphicsPipeline(con->dev, pipeline);
+    SDL_ReleaseGPUSampler(con->dev, sampler);
+    SDL_ReleaseGPUTexture(con->dev, texture);
+    SDL_ReleaseGPUTransferBuffer(con->dev, fragtransferbuf);
+    SDL_ReleaseGPUBuffer(con->dev, fragdatabuf);
+
+    if (renderBufLock)
+        SDL_DestroyMutex(renderBufLock);
+}
+
 SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* restrict filename, u32 samplerCnt, u32 uniBufCnt, u32 stoBufCnt, u32 stoTexCnt)
 {
     SDL_GPUShaderStage stage;
@@ -243,90 +341,6 @@ SDL_Surface* renderLoadBmp(context_t* restrict con, const char* restrict filenam
     return surf;
 }
 
-void renderDraw(context_t* restrict con)
-{
-    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(con->dev);
-
-    if (!cmdbuf) {
-        SDL_Log("Failed to acquire cmd buf: %s", SDL_GetError());
-        return;
-    }
-
-    SDL_GPUTexture* swapchain;
-
-    if (!SDL_WaitAndAcquireGPUSwapchainTexture(cmdbuf, con->window, &swapchain, NULL, NULL)) {
-        SDL_Log("Failed to acquire swapchain texture: %s", SDL_GetError());
-        return;
-    }
-
-    if (numchars && swapchain) {
-        asciidata_t* data = SDL_MapGPUTransferBuffer(con->dev, fragtransferbuf, true);
-
-        rAssert(numchars < ASCII2D_BUF_SIZE);
-
-        memcpy(data, charbuf, sizeof(asciidata_t) * numchars);
-
-        SDL_UnmapGPUTransferBuffer(con->dev, fragtransferbuf);
-
-        SDL_GPUCopyPass* copypass = SDL_BeginGPUCopyPass(cmdbuf);
-
-        SDL_UploadToGPUBuffer(
-            copypass,
-            &(SDL_GPUTransferBufferLocation) {
-                .transfer_buffer = fragtransferbuf,
-                .offset = 0
-            },
-            &(SDL_GPUBufferRegion) {
-                .buffer = fragdatabuf,
-                .offset = 0,
-                .size = ASCII2D_BUF_SIZE * sizeof(asciidata_t),
-            },
-            true
-        );
-
-        SDL_EndGPUCopyPass(copypass);
-
-        SDL_GPURenderPass* renderpass = SDL_BeginGPURenderPass(
-            cmdbuf,
-            &(SDL_GPUColorTargetInfo) {
-                .texture = swapchain,
-                .cycle = false,
-                .load_op = SDL_GPU_LOADOP_CLEAR,
-                .store_op = SDL_GPU_STOREOP_STORE,
-                .clear_color = (SDL_FColor) {0.0f, 0.0f, 0.0f, 1.0f}
-            },
-            1,
-            NULL
-        );
-
-        SDL_BindGPUGraphicsPipeline(renderpass, pipeline);
-        SDL_BindGPUVertexStorageBuffers(renderpass, 0, &fragdatabuf, 1);
-        SDL_BindGPUFragmentSamplers(renderpass, 0, &(SDL_GPUTextureSamplerBinding) {.texture = texture, .sampler = sampler}, 1);
-
-        SDL_DrawGPUPrimitives(renderpass, numchars * 6, 1, 0, 0);
-
-        SDL_EndGPURenderPass(renderpass);
-    }
-
-    SDL_SubmitGPUCommandBuffer(cmdbuf);
-}
-
-void renderCleanupWindow(context_t* restrict con)
-{
-    SDL_ReleaseWindowFromGPUDevice(con->dev, con->window);
-    SDL_DestroyWindow(con->window);
-    SDL_DestroyGPUDevice(con->dev);
-}
-
-void renderCleanupPipeline(context_t* restrict con)
-{
-    SDL_ReleaseGPUGraphicsPipeline(con->dev, pipeline);
-    SDL_ReleaseGPUSampler(con->dev, sampler);
-    SDL_ReleaseGPUTexture(con->dev, texture);
-    SDL_ReleaseGPUTransferBuffer(con->dev, fragtransferbuf);
-    SDL_ReleaseGPUBuffer(con->dev, fragdatabuf);
-}
-
 renderer_t r_ascii2D = {RENDERTYPE_2D, renderInitPipeline, renderDraw, renderCleanupPipeline};
 
 //
@@ -383,9 +397,9 @@ gameobj_t* addGameObject(const ascii2info_t* info, u32 len, f32 x, f32 y)
         i->g = (f32) ((u8) (info->color >> 16)) / 255.0f;
         i->b = (f32) ((u8) (info->color >> 8)) / 255.0f;
         i->a = (f32) ((u8) info->color) / 255.0f;
-        i->scale = 1.0f / 18.0f;
-        i->x = (info->pos.x / 640.0f) * 1.2f;
-        i->y = -((info->pos.y / 360.0f) - i->scale) * 1.2f;
+        i->scale = 1.0f / 80.0f;
+        i->x = info->pos.x + x;
+        i->y = info->pos.y + y;
         
         if (info->charID < 32)
             i->charID = 0;

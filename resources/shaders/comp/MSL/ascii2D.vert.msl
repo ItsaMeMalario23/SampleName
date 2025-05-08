@@ -57,8 +57,11 @@ struct type_StructuredBuffer_asciidata
     asciidata _m0[1];
 };
 
-constant spvUnsafeArray<uint, 6> _50 = spvUnsafeArray<uint, 6>({ 0u, 1u, 2u, 3u, 2u, 1u });
-constant spvUnsafeArray<float2, 4> _54 = spvUnsafeArray<float2, 4>({ float2(0.0, 1.0), float2(1.0), float2(0.0), float2(1.0, 0.0) });
+constant float4 _50 = {};
+constant float2 _51 = {};
+
+constant spvUnsafeArray<uint, 6> _52 = spvUnsafeArray<uint, 6>({ 0u, 1u, 2u, 3u, 2u, 1u });
+constant spvUnsafeArray<float2, 4> _57 = spvUnsafeArray<float2, 4>({ float2(0.0, 2.0), float2(2.0), float2(0.0), float2(2.0, 0.0) });
 
 struct main0_out
 {
@@ -70,41 +73,35 @@ struct main0_out
 vertex main0_out main0(const device type_StructuredBuffer_asciidata& data [[buffer(0)]], uint gl_VertexIndex [[vertex_id]])
 {
     main0_out out = {};
-    uint _62 = gl_VertexIndex / 6u;
-    uint _63 = gl_VertexIndex % 6u;
-    float _70 = float(data._m0[_62].charID % 19u) * 0.052631579339504241943359375;
-    float _71 = _70 - 0.0032894737087190151214599609375;
-    float _75 = float(data._m0[_62].charID / 19u) * 0.20000000298023223876953125;
-    float _76 = _70 + 0.0493421070277690887451171875;
-    float _77 = _75 + 0.20000000298023223876953125;
-    spvUnsafeArray<float2, 4> _82 = spvUnsafeArray<float2, 4>({ float2(_71, _75), float2(_76, _75), float2(_71, _77), float2(_76, _77) });
-    spvUnsafeArray<float2, 4> _60 = _82;
-    float2 _91 = ((_54[_50[_63]] * data._m0[_62].scale) + data._m0[_62].position) - float2(1.0);
-    float _92 = _91.x;
-    float4 _94 = float4(_92, _91.y, 0.0, 1.0);
-    bool _104;
-    if (!(_50[_63] == 1u))
+    float2 _115;
+    float4 _116;
+    float4 _117;
+    do
     {
-        _104 = _50[_63] == 3u;
-    }
-    else
-    {
-        _104 = true;
-    }
-    float4 _111;
-    if (_104)
-    {
-        float4 _110 = _94;
-        _110.x = _92 - (0.5 * data._m0[_62].scale);
-        _111 = _110;
-    }
-    else
-    {
-        _111 = _94;
-    }
-    out.out_var_TEXCOORD0 = _60[_50[_63]];
-    out.out_var_TEXCOORD1 = data._m0[_62].color;
-    out.gl_Position = _111;
+        uint _67 = gl_VertexIndex / 6u;
+        if (data._m0[_67].charID == 0u)
+        {
+            _115 = _51;
+            _116 = float4(0.0);
+            _117 = _50;
+            break;
+        }
+        uint _73 = gl_VertexIndex % 6u;
+        float _79 = float(data._m0[_67].charID % 19u) * 0.052631579339504241943359375;
+        float _80 = _79 - 0.0032894737087190151214599609375;
+        float _84 = float(data._m0[_67].charID / 19u) * 0.20000000298023223876953125;
+        float _85 = _79 + 0.0493421070277690887451171875;
+        float _86 = _84 + 0.20000000298023223876953125;
+        spvUnsafeArray<float2, 4> _91 = spvUnsafeArray<float2, 4>({ float2(_80, _84), float2(_85, _84), float2(_80, _86), float2(_85, _86) });
+        spvUnsafeArray<float2, 4> _63 = _91;
+        _115 = _63[_52[_73]];
+        _116 = data._m0[_67].color;
+        _117 = float4(((_57[_52[_73]].x * data._m0[_67].scale) + ((device float*)&data._m0[_67].position)[0]) - 1.0, (((_57[_52[_73]].y * data._m0[_67].scale) * 1.77777779102325439453125) + ((device float*)&data._m0[_67].position)[1]) - 1.0, 0.0, 1.0);
+        break;
+    } while(false);
+    out.out_var_TEXCOORD0 = _115;
+    out.out_var_TEXCOORD1 = _116;
+    out.gl_Position = _117;
     return out;
 }
 

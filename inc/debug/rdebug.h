@@ -51,7 +51,8 @@
 #define ERR_FTL             4
 
 // Maximum length for debug messages
-#define RDEBUG_STRING_MAX_LEN   256
+#define RDEBUG_STRING_MAX_LEN       256
+#define RDEBUG_MAX_BREAK_FUNCTIONS  8
 
 //
 //  Dont use these functions
@@ -61,6 +62,8 @@ void rDebugOutputStream_Implementation(const char* stream);
 void rAssertFail_Implementation(const char* condition, const char* filename, unsigned linenum);
 void rWarningFail_Implementation(const char* condition, const char* filename, unsigned linenum);
 void rDebugString_Implementation(unsigned errorlevel, const char* string);
+void rSetDebugBreak_Implementation(void (*func)(void));
+void rRunDebugBreaks_Implementation(void);
 
 //
 //  Use these functions and macros
@@ -69,15 +72,17 @@ void rDebugString_Implementation(unsigned errorlevel, const char* string);
 
 //  Debug breaks
 #if defined RDEBUG_BREAK_DBREAK
-    #define rReleaseBreak() {__debugbreak();}
+    #define rReleaseBreak() __debugbreak()
 #elif defined RDEBUG_BREAK_GCC
     // Issue int 3 if debugbreak() does not work
-    #define rReleaseBreak() {__asm__( "int $3" );}
+    #define rReleaseBreak() __asm__( "int $3" )
 #elif defined RDEBUG_BREAK_INTEL
     #define rReleaseBreak() {__asm { int 3 }}
+#elif defined RDEBUG_BREAK_CUSTOM
+    #define rReleaseBreak() rRunDebugBreaks_Implementation()
 #elif defined RDEBUG_BREAK_EXIT
     // Halt execution on assert fail
-    #define rReleaseBreak() { exit(-1); }
+    #define rReleaseBreak() exit(-1)
 #else
     #define rReleaseBreak() ((void)0)
 #endif
@@ -95,6 +100,8 @@ void rReleasePrintf(const char* fmt, ... );
 
 #define rDebugOutputStream( x ) rDebugOutputStream_Implementation(x)
 
+#define rSetReleaseBreak( x ) rSetDebugBreak_Implementation(x)
+
 //
 //  Debug functions are not compiled in release mode
 //
@@ -106,6 +113,7 @@ void rReleasePrintf(const char* fmt, ... );
     #define rAssertMsg( x, msg ) ((void)0)      /* Assert x true, print msg on fail */
     #define rWarning( x ) ((void)0)
     #define rWarningMsg( x, msg ) ((void)0)
+    #define rSetDebugBreak( x ) ((void)0)
 
     #define rDebugString( x ) ((void)0)
     #define rDebugStringLevel( lvl, x ) ((void)0)
@@ -121,6 +129,7 @@ void rReleasePrintf(const char* fmt, ... );
     #define rWarning( x ) if (!(x)) rWarningFail_Implementation(#x,__FILE__,__LINE__)
     #define rWarningMsg( x, msg ) if (!(x)) rWarningFail_Implementation(msg,__FILE__,__LINE__)
     #define rHaltOnAsserts( x ) rDebugHaltOnAsserts_Implementation(x)
+    #define rSetDebugBreak( x ) rSetDebugBreak_Implementation( x )
 
     #define rDebugString( x ) rDebugString_Implementation(0, x)
     #define rDebugStringLevel( lvl, x ) rDebugString_Implementation(lvl, x)

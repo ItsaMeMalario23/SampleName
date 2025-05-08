@@ -1,6 +1,7 @@
 #include <SDL3/SDL.h>
 
 #include <input.h>
+#include <debug/rdebug.h>
 
 //
 //  input state
@@ -51,14 +52,66 @@ static SDL_AppResult right(u32 kdown)
     return SDL_APP_CONTINUE;
 }
 
+static SDL_AppResult dbreak(u32 kdown)
+{
+    if (kdown)
+        rAssert(0);
+
+    return SDL_APP_CONTINUE;
+}
+
 //
 //  keyboard mapping
 //
 
 static kbevent_f kbmap[NUM_KEYS] = {up, left, down, right, up, left, down, right, quit, quit};
 
-SDL_AppResult handleKBInput(SDL_Keycode key, u32 kdown)
+void setStdKBMapping(void)
 {
+    kbmap[SDL_SCANCODE_UP] = up;
+    kbmap[SDL_SCANCODE_W] = up;
+
+    kbmap[SDL_SCANCODE_LEFT] = left;
+    kbmap[SDL_SCANCODE_A] = left;
+    
+    kbmap[SDL_SCANCODE_DOWN] = down;
+    kbmap[SDL_SCANCODE_S] = down;
+
+    kbmap[SDL_SCANCODE_RIGHT] = right;
+    kbmap[SDL_SCANCODE_D] = right;
+
+    kbmap[SDL_SCANCODE_ESCAPE] = quit;
+    kbmap[SDL_SCANCODE_Q] = quit;
+
+    kbmap[SDL_SCANCODE_0] = dbreak;
+}
+
+SDL_AppResult handleKBInput(SDL_Scancode key, u32 kdown)
+{
+    // handle interrupt
+    if (f_int3) {
+        if (key == SDL_SCANCODE_RETURN) {
+            f_int3 = 0;
+            SDL_Log(" UNPAUSE");
+        }
+
+        return SDL_APP_CONTINUE;
+    }
+
+    if (key < NUM_KEYS && kbmap[key])
+        return kbmap[key](kdown);
+
+    return SDL_APP_CONTINUE;
+}
+
+/*
+SDL_AppResult handleKBInput(SDL_Scancode key, u16 kdown, u16 int3)
+{
+    if (key >= 400)
+        return SDL_APP_CONTINUE;
+
+    SDL_Log("Key ID %ld", key);
+
     switch (key) {
     case SDLK_UP:
         return kbmap[KEY_UP](kdown);
@@ -93,3 +146,4 @@ SDL_AppResult handleKBInput(SDL_Keycode key, u32 kdown)
 
     return SDL_APP_CONTINUE;
 }
+*/

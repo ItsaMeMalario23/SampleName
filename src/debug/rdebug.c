@@ -8,13 +8,16 @@
 //
 //  Globals
 //
-FILE* g_debugStream = NULL;
+static FILE* g_debugStream;
 
-char g_debugLog = 0;
-char g_debugTime = 0;
-char g_haltOnAsserts = 1;
+static char g_debugLog = 0;
+static char g_debugTime = 0;
+static char g_haltOnAsserts = 1;
 
-const char* g_errorLevels[4] = {"[INFO]:", "[WARNING]:", "[ERROR]:", "[FATAL]:"};
+static const char* g_errorLevels[4] = {"[INFO]:", "[WARNING]:", "[ERROR]:", "[FATAL]:"};
+
+static void (*g_breakFunc[RDEBUG_MAX_BREAK_FUNCTIONS])(void);
+static unsigned g_breakFuncIdx = 0;
 
 // Initialize output stream
 void __init(void)
@@ -43,6 +46,31 @@ void __cleanup(void)
 void rDebugHaltOnAsserts_Implementation(char halt)
 {
     g_haltOnAsserts = halt;
+}
+
+void rSetDebugBreak_Implementation(void (*func)(void))
+{
+    if (g_breakFuncIdx < RDEBUG_MAX_BREAK_FUNCTIONS)
+    {
+        g_breakFunc[g_breakFuncIdx++] = func;
+    }
+}
+
+void rRunDebugBreaks_Implementation(void)
+{
+    for (unsigned i = 0; i < g_breakFuncIdx; i++)
+    {
+        if (g_breakFunc[i])
+        {
+            g_breakFunc[i]();
+        }
+    }
+
+    #ifdef RDEBUG_BREAK_EXIT
+
+    exit(-1);
+
+    #endif
 }
 
 // Set output stream for debug messages

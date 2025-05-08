@@ -19,6 +19,7 @@ typedef struct renderer_s {
 } renderer_t;
 
 extern renderer_t r_ascii2D;
+extern SDL_Mutex* renderBufLock;
 
 void renderInitWindow(context_t* restrict con, SDL_WindowFlags flags);
 void renderInitPipeline(context_t* restrict con);

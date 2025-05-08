@@ -4,7 +4,7 @@
 #include <SDL3/SDL.h>
 
 #define R_DEBUG
-#define RDEBUG_BREAK_EXIT
+#define RDEBUG_BREAK_CUSTOM
 
 #define BLACK   0x000000ff
 #define WHITE   0xffffffff
@@ -79,5 +79,7 @@ typedef struct gameobj_s {
     u64          len;
     asciidata_t* data;
 } gameobj_t;
+
+extern u32 f_int3;
 
 #endif

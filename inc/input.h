@@ -14,7 +14,7 @@
 #define KEY_Q       8
 #define KEY_ESCAPE  9
 
-#define NUM_KEYS    10
+#define NUM_KEYS    400
 
 typedef SDL_AppResult (*kbevent_f)(u32);
 
@@ -27,6 +27,8 @@ typedef struct instate_s {
 
 instate_t* getInputState(void);
 
-SDL_AppResult handleKBInput(SDL_Keycode key, u32 kdown);
+void setStdKBMapping(void);
+
+SDL_AppResult handleKBInput(SDL_Scancode key, u32 kdown);
 
 #endif
