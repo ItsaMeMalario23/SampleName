@@ -91,7 +91,7 @@ static int animationThread(void* restrict ptr)
         SDL_LockMutex(lock);
 
         for (animation_t* i = animbuf; i < animbuf + ANIM_BUF_SIZE; i++) {
-            if (!i->object)
+            if (!i->object || i->numcycles == -2)
                 continue;
 
             // reset or destroy animation
@@ -106,11 +106,16 @@ static int animationThread(void* restrict ptr)
                 }
                 else if (--(i->numcycles) == 0)
                 {
+                    if (i->keep) {
+                        i->numcycles = -2;
+                        continue;
+                    }
+
+
                     if (i->reset)
                         vec2ToAsciiBuf(i->stdpos, i->object->data, i->object->len);
 
                     memFree(i->stdpos);
-
                     memset(i, 0, sizeof(animation_t));
 
                     continue;

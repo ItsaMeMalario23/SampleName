@@ -29,11 +29,14 @@ void renderCleanupPipeline(context_t* restrict con);
 SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* restrict filename, u32 samplerCnt, u32 uniBufCnt, u32 stoBufCnt, u32 stoTexCnt);
 SDL_Surface* renderLoadBmp(context_t* restrict con, const char* restrict filename);
 
+void setHitbox(f32 x, f32 y, f32 dx, f32 dy);
+
 gameobj_t* addGameObject(const ascii2info_t* info, u32 len, f32 x, f32 y);
 void moveGameObject(const gameobj_t* restrict obj, f32 dx, f32 dy);
 void updateGameObjectPos(gameobj_t* restrict obj);
 void removeGameObject(gameobj_t* restrict obj);
 void resetAllGameObjects(void);
+void handleCollision(void);
 
 mat4_t multiplyMat4(mat4_t m1, mat4_t m2);
 mat4_t rotationMatZ(f32 rad);

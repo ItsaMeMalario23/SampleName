@@ -29,6 +29,8 @@ typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
 
+typedef struct animation_s animation_t;
+
 typedef struct context_s {
     const char*     name;
     const char*     path;
@@ -75,11 +77,16 @@ typedef struct asciidata_s {
 #define ASCII2D_OBJ_BUF_SIZE 32
 
 typedef struct gameobj_s {
-    f32          x, y;
+    f32          dx, dy;    /* only used to TEMPORARILY store translations */
+    f32          x, y;      /* global coordinates of obj origin */
     u64          len;
     asciidata_t* data;
 } gameobj_t;
 
 extern u32 f_int3;
+
+extern animation_t* birdanimation;
+extern gameobj_t* bird;
+extern gameobj_t* fruit[4];
 
 #endif

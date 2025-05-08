@@ -13,19 +13,21 @@
 #include <debug/rdebug.h>
 #include <debug/memtrack.h>
 
-const ascii2info_t bird[17] = {
-    {'\\', WHITE, {  2, 33}}, {'-', WHITE, {17, -5}}, {'-', WHITE, {31, -5}}, {'\\', WHITE, {47,  2}},
-    { '(', WHITE, {-12,  9}}, {'@',  GOLD, { 3, 10}}, {'O', WHITE, {32,  6}}, { '>',   RED, {55, 18}},
-    {'\'', BLACK, { 33, 10}}, {'_', WHITE, {18, 32}}, {'_', WHITE, {33, 32}}, { '/', WHITE, {49, 32}},
-    { '>',   RED, { 46, 18}}, {')', WHITE, {17, 11}}, {'B',  GOLD, {17, 28}}, { 'D',  GOLD, {34, 28}},
-    { '.', WHITE, {  9, -9}},
-};
-
 const ascii2info_t bird2[16] = {
-    {'(', 0xffffffff, {-0.0187500, -0.0694444}}, {')', 0xffffffff, {0.0265625, -0.0750000}}, {'-', 0xffffffff, {0.0484375, -0.0305556}}, {'\\', 0xffffffff, {0.0734375, -0.0500000}},
-    {'\\', 0xffffffff, {0.0031250, -0.1361111}}, {'@', 0xfcd303ff, {0.0046875, -0.0722222}}, {'O', 0xffffffff, {0.0500000, -0.0611111}}, {'>', 0xff0000ff, {0.0859375, -0.0944444}},
+    {'(', 0xffffffff, {-0.0187500, -0.0694444}}, {'@', 0xfcd303ff, {0.0046875, -0.0722222}}, {'-', 0xffffffff, {0.0484375, -0.0305556}}, {'\\', 0xffffffff, {0.0734375, -0.0500000}},
+    {'\\', 0xffffffff, {0.0031250, -0.1361111}}, {')', 0xffffffff, {0.0265625, -0.0750000}}, {'O', 0xffffffff, {0.0500000, -0.0611111}}, {'>', 0xff0000ff, {0.0859375, -0.0944444}},
     {'\'', 0xff, {0.0515625, -0.0722222}}, {'_', 0xffffffff, {0.0281250, -0.1333333}}, {'_', 0xffffffff, {0.0515625, -0.1333333}}, {'/', 0xffffffff, {0.0765625, -0.1333333}},
     {'>', 0xff0000ff, {0.0718750, -0.0944444}}, {'-', 0xffffffff, {0.0218750, -0.0305556}}, {'B', 0xfcd303ff, {0.0265625, -0.1222222}}, {'D', 0xfcd303ff, {0.0531250, -0.1222222}},
+};
+
+const ascii2info_t cherry[6] = {
+    {'@', 0xff0000ff, {0.0484375f, -0.1305556f}}, {')', 0xff0000ff, {0.0656250f, -0.1333333f}}, {'(', 0xff0000ff, {0.0296875f, -0.1333333f}}, {'-', 0xff0000ff, {0.0468750f, -0.1583333f}},
+    {',', 0x40d800ff, {0.0531250f, -0.0833333f}}, {'.', 0x40d800ff, {0.0562500f, -0.0694444f}},
+};
+
+const ascii2info_t cherry2[6] = {
+    {'O', 0xff0000ff, {0.0218750f, 0.0166667f}}, {'-', 0xff0000ff, {0.0203125f, -0.0166667f}}, {')', 0xff0000ff, {0.0421875f, 0.0083333f}}, {'(', 0xff0000ff, {0.0000000f, 0.0083333f}},
+    {',', 0x40d800ff, {0.0265625f, 0.0694444f}}, {'.', 0x40d800ff, {0.0250000f, 0.0888889f}},
 };
 
 static context_t context = { .name = "[SampleName]", .width = 1280, .height = 720 };
@@ -57,15 +59,19 @@ void int3(void)
     SDL_Log(" INT3");
 }
 
-static gameobj_t* obj;
 static instate_t* inputstate;
 
 static u64 frq;
 static u64 prev;
 
-static vec2f_t frm1[2] = {{0.0f, -0.003f}, {0.0f, 0.003f}};
-static vec2f_t frm2[2] = {{0.0f, 0.003f}, {0.0f, -0.003f}};
-static animframe_t animation[4] = {{frm1, 40, 2}, {frm2, 4, 2}, {frm1, 40, 2}, {frm2, 4, 2}};
+static vec2f_t frm1[2] = {{0.0f, -0.006f}, {0.0f, -0.003f}};
+static vec2f_t frm2[2] = {{0.0f, 0.006f}, {0.0f, 0.003f}};
+static vec2f_t frm3[2] = {{0.0f, 0.0f}, {0.0f, 0.0f}};
+static animframe_t animation[4] = {{frm1, 4, 2}, {frm2, 6, 2}, {frm3, 20, 2}};
+
+animation_t* birdanimation;
+gameobj_t* bird;
+gameobj_t* fruit[4];
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 {
@@ -80,14 +86,14 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 
     renderer->init(&context);
 
-    obj = addGameObject(bird2, sizeof(bird2) / sizeof(ascii2info_t), 0.25f, 0.25f);
-    /*
-    (void) addGameObject(bird, sizeof(bird) / sizeof(ascii2info_t), 1.0f, 1.0f);
-    (void) addGameObject(bird, sizeof(bird) / sizeof(ascii2info_t), 1.5f, 1.5f);
-    (void) addGameObject(bird, sizeof(bird) / sizeof(ascii2info_t), 1.0f, 1.5f);
-    (void) addGameObject(bird, sizeof(bird) / sizeof(ascii2info_t), 1.5f, 1.0f);
-    */
-
+    bird = addGameObject(bird2, sizeof(bird2) / sizeof(ascii2info_t), 0.25f, 0.25f);
+    
+    //fruit[0] = addGameObject(cherry2, 6, 0.0f, 0.0f);
+    fruit[0] = addGameObject(cherry2, 6, 0.8f, 0.3f);
+    fruit[1] = addGameObject(cherry2, 6, 1.5f, 1.7f);
+    fruit[2] = addGameObject(cherry2, 6, 1.0f, 1.8f);
+    fruit[3] = addGameObject(cherry2, 6, 1.2f, 1.0f);
+    
     frq = SDL_GetPerformanceFrequency();
     prev = SDL_GetPerformanceCounter();
 
@@ -95,7 +101,11 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
     inputstate = getInputState();
 
     initAnimationThread();
-    addAnimation(obj, animation, 4, 1, 1);
+    birdanimation = addAnimation(bird, animation, 3, 1, ANIM_SUSPENDED);
+    birdanimation->keep = 1;
+
+    if (!birdanimation)
+        SDL_Log("ERROR: Bird animation null ref");
 
     SDL_AddEventWatch(lifecycleWatchdog, NULL);
 
@@ -131,24 +141,28 @@ SDL_AppResult SDL_AppIterate(void* appstate)
     u64 t = SDL_GetPerformanceCounter();
     f64 dt = ((f64) t - (f64) prev) / (f64) frq;
 
-    if (++counter >= 500) {
+    if (++counter >= 400) {
         //SDL_Log("FPS %.2f", 1.0 / dt);
         counter = 0;
     }
 
-    if (obj && inputstate->up)
-        obj->y += 0.192f * dt;
+    if (bird && inputstate->up)
+        bird->dy += 0.192f * dt;
 
-    if (obj && inputstate->left)
-        obj->x -= 0.108f * dt;
+    if (bird && inputstate->left)
+        bird->dx -= 0.108f * dt;
 
-    if (obj && inputstate->down)
-        obj->y -= 0.192f * dt;
+    if (bird && inputstate->down)
+        bird->dy -= 0.192f * dt;
 
-    if (obj && inputstate->right)
-        obj->x += 0.108f * dt;
+    if (bird && inputstate->right)
+        bird->dx += 0.108f * dt;
 
-    updateGameObjectPos(obj);
+    updateGameObjectPos(bird);
+
+    setHitbox(bird->x - 1.0f, bird->y - 1.0f, (1.0f / 12.0f), (1.0f / 8.0f));
+
+    handleCollision();
 
     renderer->draw(&context);
 

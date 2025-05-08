@@ -16,7 +16,6 @@ struct output
 StructuredBuffer<asciidata> data : register(t0, space0);
 
 static const uint indices[6] = {0, 1, 2, 3, 2, 1};
-
 static const float2 vertexpos[4] = {{0.0f, 2.0f}, {2.0f, 2.0f}, {0.0f, 0.0f}, {2.0f, 0.0f}};
 
 output main(uint id : SV_VertexID)
@@ -44,7 +43,6 @@ output main(uint id : SV_VertexID)
 
     float2 tmp = float2((vertexpos[vert].x * data[idx].scale) + data[idx].position.x - 1.0f, (vertexpos[vert].y * data[idx].scale * 1.7777777778f) + data[idx].position.y - 1.0f);
 
-    //retval.position = float4((vertexpos[vert] * data[idx].scale) + data[idx].position - 1.0f, 0.0f, 1.0f);
     retval.position = float4(tmp, 0.0f, 1.0f);
     retval.texcoord = texcoords[vert];
     retval.color = data[idx].color;
