@@ -15,7 +15,6 @@ static SDL_GPUBuffer* fragdatabuf;
 // for hitboxes
 static SDL_GPUGraphicsPipeline* boxpipeline;
 static SDL_GPUBuffer* vtxbuf;
-static SDL_GPUBuffer* idxbuf;
 
 // character buf
 static asciidata_t charbuf[ASCII2D_BUF_SIZE];
@@ -28,6 +27,10 @@ SDL_Mutex* renderBufLock = NULL;
 static gameobj_t objbuf[ASCII2D_OBJ_BUF_SIZE];
 static u32 objidx;
 static u32 objfragmented;
+
+// hitbox buffer
+static hitbox_t hitboxes[HITBOX_BUF_SIZE];
+static u32 numboxes;
 
 void renderInitWindow(context_t* restrict con, SDL_WindowFlags flags)
 {
@@ -71,6 +74,9 @@ void renderInitPipeline(context_t* restrict con)
 
     SDL_SetGPUSwapchainParameters(con->dev, con->window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, pmode);
 
+    //
+    //  std pipeline
+    //
     SDL_GPUShader* vertshader = renderLoadShader(con, "ascii2D.vert", 0, 0, 1, 0);
     SDL_GPUShader* fragshader = renderLoadShader(con, "ascii2D.frag", 1, 0, 0, 0);
 
@@ -175,7 +181,9 @@ void renderInitPipeline(context_t* restrict con)
     SDL_DestroySurface(img);
     SDL_ReleaseGPUTransferBuffer(con->dev, textransferbuf);
 
+    //
     // hitbox pipeline
+    //
     vertshader = renderLoadShader(con, "box.vert", 0, 0, 0, 0);
     fragshader = renderLoadShader(con, "box.frag", 0, 0, 0, 0);
 
@@ -199,7 +207,7 @@ void renderInitPipeline(context_t* restrict con)
                     .slot = 0,
                     .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
                     .instance_step_rate = 0,
-                    .pitch = sizeof(vec2f_t),
+                    .pitch = sizeof(vec2f_t)
                 }},
                 .num_vertex_attributes = 1,
                 .vertex_attributes = (SDL_GPUVertexAttribute[]) {{
@@ -221,82 +229,7 @@ void renderInitPipeline(context_t* restrict con)
         return;
     }
 
-    vtxbuf = SDL_CreateGPUBuffer(con->dev, &(SDL_GPUBufferCreateInfo) {.usage = SDL_GPU_BUFFERUSAGE_VERTEX, .size = sizeof(vec2f_t) * 4});
-    idxbuf = SDL_CreateGPUBuffer(con->dev, &(SDL_GPUBufferCreateInfo) {.usage = SDL_GPU_BUFFERUSAGE_INDEX, .size = sizeof(u16) * 6});
-
-    SDL_GPUTransferBuffer* transfbuf = SDL_CreateGPUTransferBuffer(
-        con->dev,
-        &(SDL_GPUTransferBufferCreateInfo) {
-            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-            .size = (sizeof(f32) * 8) + (sizeof(u16) * 6)
-        }
-    );
-
-    vec2f_t* transfdata = SDL_MapGPUTransferBuffer(con->dev, transfbuf, false);
-
-    transfdata[0] = (vec2f_t) {-1.0f,  1.0f};
-    transfdata[1] = (vec2f_t) { 1.0f,  1.0f};
-    transfdata[2] = (vec2f_t) { 1.0f, -1.0f};
-    transfdata[3] = (vec2f_t) {-1.0f, -1.0f};
-
-    u16* idxdata = (u16*) &transfdata[4];
-
-    idxdata[0] = 0;
-    idxdata[1] = 1;
-    idxdata[2] = 2;
-    idxdata[3] = 0;
-    idxdata[4] = 2;
-    idxdata[5] = 3;
-
-    SDL_UnmapGPUTransferBuffer(con->dev, transfbuf);
-
-    cmdbuf = SDL_AcquireGPUCommandBuffer(con->dev);
-    copypass = SDL_BeginGPUCopyPass(cmdbuf);
-
-    SDL_UploadToGPUBuffer(
-        copypass,
-        &(SDL_GPUTransferBufferLocation) {
-            .transfer_buffer = transfbuf,
-            .offset = 0
-        },
-        &(SDL_GPUBufferRegion) {
-            .buffer = vtxbuf,
-            .offset = 0,
-            .size = sizeof(vec2f_t) * 4
-        },
-        false
-    );
-
-    SDL_UploadToGPUBuffer(
-        copypass,
-        &(SDL_GPUTransferBufferLocation) {
-            .transfer_buffer = transfbuf,
-            .offset = sizeof(vec2f_t) * 4
-        },
-        &(SDL_GPUBufferRegion) {
-            .buffer = idxbuf,
-            .offset = 0,
-            .size = sizeof(u16) * 6
-        },
-        false
-    );
-
-    SDL_EndGPUCopyPass(copypass);
-    SDL_SubmitGPUCommandBuffer(cmdbuf);
-    SDL_ReleaseGPUTransferBuffer(con->dev, transfbuf);
-    SDL_ReleaseGPUShader(con->dev, vertshader);
-    SDL_ReleaseGPUShader(con->dev, fragshader);
-}
-
-static u32 boxmode = 1;
-static f32 hitbox[4];
-
-void setHitbox(f32 x, f32 y, f32 dx, f32 dy)
-{
-    hitbox[0] = x;
-    hitbox[1] = y;
-    hitbox[2] = dx;
-    hitbox[3] = dy;
+    vtxbuf = SDL_CreateGPUBuffer(con->dev, &(SDL_GPUBufferCreateInfo) { .usage = SDL_GPU_BUFFERUSAGE_VERTEX, .size = sizeof(vec2f_t) * 6 * HITBOX_BUF_SIZE });
 }
 
 void renderDraw(context_t* restrict con)
@@ -315,6 +248,9 @@ void renderDraw(context_t* restrict con)
         return;
     }
 
+    //
+    //  render char buf
+    //
     if (numchars && swapchain) {
         asciidata_t* data = SDL_MapGPUTransferBuffer(con->dev, fragtransferbuf, true);
 
@@ -366,21 +302,34 @@ void renderDraw(context_t* restrict con)
         SDL_EndGPURenderPass(renderpass);
     }
 
-    if (boxmode && swapchain) {
+    //
+    //  render hitboxes
+    //
+    if (numboxes && swapchain) {
         SDL_GPUTransferBuffer* transfbuf = SDL_CreateGPUTransferBuffer(
             con->dev,
             &(SDL_GPUTransferBufferCreateInfo) {
                 .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-                .size = (sizeof(f32) * 8)
+                .size = sizeof(vec2f_t) * 6 * numboxes
             }
         );
     
-        vec2f_t* transfdata = SDL_MapGPUTransferBuffer(con->dev, transfbuf, false);
-    
-        transfdata[0] = (vec2f_t) {hitbox[0], hitbox[1] + hitbox[3]};
-        transfdata[1] = (vec2f_t) {hitbox[0] + hitbox[2], hitbox[1] + hitbox[3]};
-        transfdata[2] = (vec2f_t) {hitbox[0] + hitbox[2], hitbox[1]};
-        transfdata[3] = (vec2f_t) {hitbox[0], hitbox[1]};
+        vec2f_t* data = SDL_MapGPUTransferBuffer(con->dev, transfbuf, false);
+
+        u32 k = 0;
+        for (hitbox_t* i = hitboxes; i < hitboxes + HITBOX_BUF_SIZE; i++) {
+            if (!i->object)
+                continue;
+
+            data[k] = (vec2f_t) { i->object->x + i->dx, i->object->y + i->dy + i->object->yscale };
+            data[k + 1] = (vec2f_t) { i->object->x + i->dx + i->object->xscale, i->object->y + i->dy + i->object->yscale };
+            data[k + 2] = (vec2f_t) { i->object->x + i->dx, i->object->y + i->dy };
+            data[k + 3] = (vec2f_t) { i->object->x + i->dx + i->object->xscale, i->object->y + i->dy };
+            data[k + 4] = (vec2f_t) { i->object->x + i->dx, i->object->y + i->dy };
+            data[k + 5] = (vec2f_t) { i->object->x + i->dx + i->object->xscale, i->object->y + i->dy + i->object->yscale };
+
+            k += 6;
+        }
     
         SDL_UnmapGPUTransferBuffer(con->dev, transfbuf);
 
@@ -395,7 +344,7 @@ void renderDraw(context_t* restrict con)
             &(SDL_GPUBufferRegion) {
                 .buffer = vtxbuf,
                 .offset = 0,
-                .size = sizeof(vec2f_t) * 4
+                .size = sizeof(vec2f_t) * 6 * numboxes
             },
             false
         );
@@ -415,10 +364,9 @@ void renderDraw(context_t* restrict con)
         );
 
         SDL_BindGPUGraphicsPipeline(renderpass, boxpipeline);
-        SDL_BindGPUVertexBuffers(renderpass, 0, &(SDL_GPUBufferBinding) {.buffer = vtxbuf, .offset = 0}, 1);
-        SDL_BindGPUIndexBuffer(renderpass, &(SDL_GPUBufferBinding) {.buffer = idxbuf, .offset = 0}, SDL_GPU_INDEXELEMENTSIZE_16BIT);
-    
-        SDL_DrawGPUIndexedPrimitives(renderpass, 6, 1, 0, 0, 0);
+        SDL_BindGPUVertexBuffers(renderpass, 0, &(SDL_GPUBufferBinding) { .buffer = vtxbuf, .offset = 0 }, 1);
+
+        SDL_DrawGPUPrimitives(renderpass, numboxes * 6, 1, 0, 0);
 
         SDL_EndGPURenderPass(renderpass);
     }
@@ -532,6 +480,42 @@ renderer_t r_ascii2D = {RENDERTYPE_2D, renderInitPipeline, renderDraw, renderCle
 //
 //
 
+void addHitbox(const gameobj_t* restrict object, f32 dx, f32 dy)
+{
+    for (hitbox_t* i = hitboxes; i < hitboxes + HITBOX_BUF_SIZE; i++) {
+        if (!i->object) {
+            i->object = object;
+            i->dx = dx;
+            i->dy = dy;
+
+            numboxes++;
+
+            return;
+        }
+    }
+
+    SDL_Log("Failed to add hitbox, buffer full");
+}
+
+void removeHitbox(const gameobj_t* restrict object)
+{
+    if (!numboxes) {
+        SDL_Log("Failed to remove hitbox, not hitboxes in buf");
+        return;
+    }
+
+    for (hitbox_t* i = hitboxes; i < hitboxes + HITBOX_BUF_SIZE; i++) {
+        if (i->object == object) {
+            i->object = NULL;
+            numboxes--;
+
+            return;
+        }
+    }
+
+    SDL_Log("Failed to remove hitbox, not hitbox for object in buf");
+}
+
 void handleCollision(void)
 {
     rAssert(bird);
@@ -540,10 +524,10 @@ void handleCollision(void)
     for (gameobj_t* i = fruit[0]; i < fruit[0] + 4; i++) {
         //SDL_Log("x %.4f y %.4f", bird->x, bird->y - (1.0f / 8.0f));
 
-        if (bird->x + (1.0f / 12.0f) < i->x || bird->x > i->x + (1.0f / 14.0f))
+        if (bird->x + bird->xscale < i->x || bird->x > i->x + i->xscale)
             continue;
 
-        if (bird->y < i->y || bird->y > i->y + (1.0f / 10.0f))
+        if (bird->y < i->y || bird->y - bird->yscale > i->y + i->yscale)
             continue;
 
         for (asciidata_t* k = i->data; k < i->data + i->len; k++) {
@@ -593,6 +577,8 @@ gameobj_t* addGameObject(const ascii2info_t* info, u32 len, f32 x, f32 y)
 
     obj->data = charbuf + numchars;
     obj->len = len;
+    obj->xscale = 0.0f;
+    obj->yscale = 0.0f;
     obj->dx = 0.0f;
     obj->dy = 0.0f;
     obj->x = x;

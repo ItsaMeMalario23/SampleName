@@ -13,24 +13,19 @@
 #include <debug/rdebug.h>
 #include <debug/memtrack.h>
 
-const ascii2info_t bird2[16] = {
+static const ascii2info_t birdinfo[16] = {
     {'(', 0xffffffff, {-0.0187500, -0.0694444}}, {'@', 0xfcd303ff, {0.0046875, -0.0722222}}, {'-', 0xffffffff, {0.0484375, -0.0305556}}, {'\\', 0xffffffff, {0.0734375, -0.0500000}},
     {'\\', 0xffffffff, {0.0031250, -0.1361111}}, {')', 0xffffffff, {0.0265625, -0.0750000}}, {'O', 0xffffffff, {0.0500000, -0.0611111}}, {'>', 0xff0000ff, {0.0859375, -0.0944444}},
     {'\'', 0xff, {0.0515625, -0.0722222}}, {'_', 0xffffffff, {0.0281250, -0.1333333}}, {'_', 0xffffffff, {0.0515625, -0.1333333}}, {'/', 0xffffffff, {0.0765625, -0.1333333}},
     {'>', 0xff0000ff, {0.0718750, -0.0944444}}, {'-', 0xffffffff, {0.0218750, -0.0305556}}, {'B', 0xfcd303ff, {0.0265625, -0.1222222}}, {'D', 0xfcd303ff, {0.0531250, -0.1222222}},
 };
 
-const ascii2info_t cherry[6] = {
-    {'@', 0xff0000ff, {0.0484375f, -0.1305556f}}, {')', 0xff0000ff, {0.0656250f, -0.1333333f}}, {'(', 0xff0000ff, {0.0296875f, -0.1333333f}}, {'-', 0xff0000ff, {0.0468750f, -0.1583333f}},
-    {',', 0x40d800ff, {0.0531250f, -0.0833333f}}, {'.', 0x40d800ff, {0.0562500f, -0.0694444f}},
-};
-
-const ascii2info_t cherry2[6] = {
+static const ascii2info_t cherryinfo[6] = {
     {'O', 0xff0000ff, {0.0218750f, 0.0166667f}}, {'-', 0xff0000ff, {0.0203125f, -0.0166667f}}, {')', 0xff0000ff, {0.0421875f, 0.0083333f}}, {'(', 0xff0000ff, {0.0000000f, 0.0083333f}},
     {',', 0x40d800ff, {0.0265625f, 0.0694444f}}, {'.', 0x40d800ff, {0.0250000f, 0.0888889f}},
 };
 
-static context_t context = { .name = "[SampleName]", .width = 1280, .height = 720 };
+static context_t context = { .name = "[SampleName]", .width = 1920, .height = 1080 };
 static renderer_t* renderer = &r_ascii2D;
 
 bool lifecycleWatchdog(void* userdata, SDL_Event* event)
@@ -64,12 +59,41 @@ static instate_t* inputstate;
 static u64 frq;
 static u64 prev;
 
+// static bird animation
 static vec2f_t frm1[2] = {{0.0f, -0.006f}, {0.0f, -0.003f}};
 static vec2f_t frm2[2] = {{0.0f, 0.006f}, {0.0f, 0.003f}};
 static vec2f_t frm3[2] = {{0.0f, 0.0f}, {0.0f, 0.0f}};
-static animframe_t animation[4] = {{frm1, 4, 2}, {frm2, 6, 2}, {frm3, 20, 2}};
+static animframe_t animation[4] = {{frm1, 4, 2}, {frm2, 8, 2}, {frm3, 16, 2}};
 
-animation_t* birdanimation;
+// callback bird animation
+static void animateBird(gameobj_t* bird)
+{
+    static u32 bcounter;
+
+    if (!bird) {
+        bcounter = 0;
+        return;
+    }
+
+    if (bcounter == 0) {
+        bird->data[0].y -= 0.006f;
+        bird->data[1].y -= 0.003f;
+        bcounter++;
+        return;
+    }
+
+    if (bcounter == 2) {
+        bird->data[0].y += 0.006f;
+        bird->data[1].y += 0.003f;
+        bcounter++;
+        return;
+    }
+
+    if (++bcounter > 5)
+        bcounter = 0;
+}
+
+static animation_t* birdanimation;
 gameobj_t* bird;
 gameobj_t* fruit[4];
 
@@ -83,16 +107,19 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
     rSetDebugBreak(int3);
 
     renderInitWindow(&context, 0);
-
     renderer->init(&context);
 
-    bird = addGameObject(bird2, sizeof(bird2) / sizeof(ascii2info_t), 0.25f, 0.25f);
-    
-    //fruit[0] = addGameObject(cherry2, 6, 0.0f, 0.0f);
-    fruit[0] = addGameObject(cherry2, 6, 0.8f, 0.3f);
-    fruit[1] = addGameObject(cherry2, 6, 1.5f, 1.7f);
-    fruit[2] = addGameObject(cherry2, 6, 1.0f, 1.8f);
-    fruit[3] = addGameObject(cherry2, 6, 1.2f, 1.0f);
+    bird = addGameObject(birdinfo, sizeof(birdinfo) / sizeof(ascii2info_t), 0.25f, 0.25f);
+    bird->xscale = BIRD_X_SCALE;
+    bird->yscale = BIRD_Y_SCALE;
+
+    const vec2f_t fpos[4] = {{0.8f, 0.3f}, {1.5f, 1.7f}, {1.0f, 1.8f}, {1.2f, 1.0f}};
+
+    for (u32 i = 0; i < 4; i++) {
+        fruit[i] = addGameObject(cherryinfo, 6, fpos[i].x, fpos[i].y);
+        fruit[i]->xscale = CHERRY_X_SCALE;
+        fruit[i]->yscale = CHERRY_Y_SCALE;
+    }
     
     frq = SDL_GetPerformanceFrequency();
     prev = SDL_GetPerformanceCounter();
@@ -101,8 +128,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
     inputstate = getInputState();
 
     initAnimationThread();
-    birdanimation = addAnimation(bird, animation, 3, 1, ANIM_SUSPENDED);
-    birdanimation->keep = 1;
+    birdanimation = addCallbackAnimation(bird, animateBird, 4, ANIM_RESET_POS | ANIM_RESET_CB | ANIM_KEEPALIVE);
+    queueAnimation(birdanimation, 0, 0);
 
     if (!birdanimation)
         SDL_Log("ERROR: Bird animation null ref");
@@ -130,10 +157,10 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
     return SDL_APP_CONTINUE;
 }
 
-static u32 counter;
-
 SDL_AppResult SDL_AppIterate(void* appstate)
 {
+    static u32 counter;
+
     if (f_int3) {
         return SDL_APP_CONTINUE;
     }
@@ -141,8 +168,8 @@ SDL_AppResult SDL_AppIterate(void* appstate)
     u64 t = SDL_GetPerformanceCounter();
     f64 dt = ((f64) t - (f64) prev) / (f64) frq;
 
-    if (++counter >= 400) {
-        //SDL_Log("FPS %.2f", 1.0 / dt);
+    if (inputstate->showfps && ++counter >= 400) {
+        SDL_Log("FPS %.2f", 1.0 / dt);
         counter = 0;
     }
 
@@ -158,9 +185,12 @@ SDL_AppResult SDL_AppIterate(void* appstate)
     if (bird && inputstate->right)
         bird->dx += 0.108f * dt;
 
-    updateGameObjectPos(bird);
+    if (fnotzero(bird->dx) || fnotzero(bird->dy))
+        birdanimation->numcycles = ANIM_REPEAT;
+    else
+        birdanimation->numcycles = ANIM_TERMINATE;
 
-    setHitbox(bird->x - 1.0f, bird->y - 1.0f, (1.0f / 12.0f), (1.0f / 8.0f));
+    updateGameObjectPos(bird);
 
     handleCollision();
 

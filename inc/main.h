@@ -14,6 +14,14 @@
 #define MGREEN  0x0d7000ff
 #define DGREEN  0x003000ff
 
+#define EPSILON         (0.0000001f)
+
+#define BIRD_X_SCALE    (0.1f)
+#define BIRD_Y_SCALE    (0.13333333f)
+
+#define CHERRY_X_SCALE  (0.06f)
+#define CHERRY_Y_SCALE  (0.10f)
+
 typedef int8_t i8;
 typedef uint8_t u8;
 
@@ -79,14 +87,16 @@ typedef struct asciidata_s {
 typedef struct gameobj_s {
     f32          dx, dy;    /* only used to TEMPORARILY store translations */
     f32          x, y;      /* global coordinates of obj origin */
+    f32          xscale;
+    f32          yscale;
     u64          len;
     asciidata_t* data;
 } gameobj_t;
 
 extern u32 f_int3;
-
-extern animation_t* birdanimation;
 extern gameobj_t* bird;
 extern gameobj_t* fruit[4];
+
+static inline bool fnotzero(f32 f) { return f > EPSILON || f < -EPSILON; }
 
 #endif

@@ -6,70 +6,75 @@
 #include <debug/memtrack.h>
 
 static SDL_Mutex* lock;
-static animation_t animbuf[ANIM_BUF_SIZE];
+static animation_t animbuf[ANIM_STO_BUF_SIZE];
+
+static SDL_Mutex* qlock;
+static u32 numqueued;
+static animation_t* animqueue[ANIM_QUEUE_SIZE];
 
 static SDL_Thread* thread;
 static u32 stop;
 
-animation_t* addAnimation(gameobj_t* restrict obj, const animframe_t* restrict animation, u16 frames, u16 reset, i32 cycles)
+//
+//  Local functions
+//
+
+// allocate animation object in buf
+static animation_t* getAnimMem(gameobj_t* restrict obj)
 {
     rAssert(obj);
     rAssert(obj->len);
     rAssert(obj->data);
-    rAssert(animation);
-    rAssert(frames);
 
     if (!lock) {
-        SDL_Log("Failed to add animation, animation buf lock null");
+        SDL_Log("Failed to add animation, animation buf lock null ref");
         return NULL;
     }
 
-    animation_t* anim = NULL;
-
-    SDL_LockMutex(lock);
-
-    for (animation_t* i = animbuf; i < animbuf + ANIM_BUF_SIZE; i++) {
+    for (animation_t* i = animbuf; i < animbuf + ANIM_STO_BUF_SIZE; i++) {
         if (!i->object) {
-            anim = i;
-            break;
+            i->object = obj;
+            return i;
         }
     }
 
-    if (!anim) {
-        SDL_Log("Failed to add animation, buffer full");
-        return NULL;
+    SDL_Log("Failed to add animation, animation buf full");
+
+    return NULL;
+}
+
+// reset char positions to saved
+static void resetCharPos(const vec2f_t* restrict pos, asciidata_t* restrict data, u32 len, f32 dx, f32 dy)
+{
+    rAssert(pos);
+    rAssert(data);
+
+    for (const vec2f_t* i = pos; i < pos + len; i++, data++) {
+        data->x = i->x + dx;
+        data->y = i->y + dy;
     }
+}
 
-    anim->numframes = frames;
-    anim->numcycles = cycles;
-    anim->frames = animation;
-    anim->object = obj;
-    anim->timer = animation->duration;
-    anim->current = 0;
+// save original char positions
+static void saveCharPos(animation_t* restrict anim)
+{
+    rAssert(anim);
+    rAssert(anim->object);
+    rAssert(anim->object->len);
+    rAssert(anim->object->data);
+    rAssert(anim->reset & ANIM_RESET_POS);
 
-    // save original char positions
-    anim->stdpos = (vec2f_t*) memAlloc(sizeof(vec2f_t) * obj->len);
+    anim->stdpos = (vec2f_t*) memAlloc(sizeof(vec2f_t) * anim->object->len);
 
     vec2f_t* k = anim->stdpos;
 
-    for (asciidata_t* i = obj->data; i < obj->data + obj->len; i++, k++) {
-        k->x = i->x;
-        k->y = i->y;
-    }
-
-    SDL_UnlockMutex(lock);
-
-    return anim;
-}
-
-static void vec2ToAsciiBuf(const vec2f_t* restrict pos, asciidata_t* restrict data, u32 len)
-{
-    for (const vec2f_t* i = pos; i < pos + len; i++, data++) {
-        data->x = i->x;
-        data->y = i->y;
+    for (asciidata_t* i = anim->object->data; i < anim->object->data + anim->object->len; i++, k++) {
+        k->x = i->x - anim->object->x;
+        k->y = i->y - anim->object->y;
     }
 }
 
+// animation thread implementation
 static int animationThread(void* restrict ptr)
 {
     f64 dt, frq = (f64) SDL_GetPerformanceFrequency();
@@ -88,65 +93,112 @@ static int animationThread(void* restrict ptr)
                 break;
         }
 
+        if (!numqueued)
+            continue;
+
+        SDL_LockMutex(qlock);
         SDL_LockMutex(lock);
 
-        for (animation_t* i = animbuf; i < animbuf + ANIM_BUF_SIZE; i++) {
-            if (!i->object || i->numcycles == -2)
+        for (u32 i = 0; i < ANIM_QUEUE_SIZE; i++) {
+            if (!animqueue[i])
                 continue;
 
-            // reset or destroy animation
-            if (i->current >= i->numframes) {
-                if (i->numcycles == -1)
-                {
-                    i->current = 0;
-                    i->timer = i->frames->duration;
+            rAssert(animqueue[i]->object);
+            rAssert(animqueue[i]->animate.staticf);
 
-                    if (i->reset)
-                        vec2ToAsciiBuf(i->stdpos, i->object->data, i->object->len);
+            if (animqueue[i]->numcycles == 0)
+            {
+                if (animqueue[i]->reset & ANIM_RESET_POS) {
+                    resetCharPos
+                    (
+                        animqueue[i]->stdpos,
+                        animqueue[i]->object->data,
+                        animqueue[i]->object->len,
+                        animqueue[i]->object->x,
+                        animqueue[i]->object->y
+                    );
                 }
-                else if (--(i->numcycles) == 0)
-                {
-                    if (i->keep) {
-                        i->numcycles = -2;
-                        continue;
-                    }
 
+                // reset callback if flag is set
+                if (animqueue[i]->reset & ANIM_RESET_CB && animqueue[i]->type == ANIM_TYPE_CALLBACK)
+                    animqueue[i]->animate.callback(NULL);
 
-                    if (i->reset)
-                        vec2ToAsciiBuf(i->stdpos, i->object->data, i->object->len);
+                // do not clear animation if keepalive flag is set
+                if (animqueue[i]->reset & ANIM_KEEPALIVE)
+                    continue;
 
-                    memFree(i->stdpos);
-                    memset(i, 0, sizeof(animation_t));
-
+                // clear animation from queue if no more cycles
+                animqueue[i] = NULL;
+                numqueued--;
+            }
+            else if (animqueue[i]->type == ANIM_TYPE_CALLBACK)
+            {
+                if (animqueue[i]->timer) {
+                    animqueue[i]->timer--;
                     continue;
                 }
-                else
-                {
-                    i->current = 0;
-                    i->timer = i->frames->duration;
+
+                // animate if timer is 0
+                SDL_LockMutex(renderBufLock);
+
+                animqueue[i]->animate.callback(animqueue[i]->object);
+
+                SDL_UnlockMutex(renderBufLock);
+
+                // set duration until next frame
+                animqueue[i]->timer = animqueue[i]->numframes;
+
+                if (animqueue[i]->numcycles > 0)
+                    animqueue[i]->numcycles--;
+            }
+            else if (animqueue[i]->type == ANIM_TYPE_STATIC)
+            {
+                // reset frame to first
+                if (animqueue[i]->current >= animqueue[i]->numframes) {
+                    animqueue[i]->current = 0;
+                    animqueue[i]->timer = animqueue[i]->animate.staticf->duration;
+
+                    if (animqueue[i]->reset & ANIM_RESET_POS) {
+                        resetCharPos
+                        (
+                            animqueue[i]->stdpos,
+                            animqueue[i]->object->data,
+                            animqueue[i]->object->len,
+                            animqueue[i]->object->x,
+                            animqueue[i]->object->y
+                        );
+                    }
+
+                    if (animqueue[i]->numcycles > 0)
+                        animqueue[i]->numcycles--;
                 }
+
+                if (animqueue[i]->timer) {
+                    animqueue[i]->timer--;
+                    continue;
+                }
+
+                // animate if timer is 0
+                SDL_LockMutex(renderBufLock);
+
+                for (u32 k = 0; k < animqueue[i]->animate.staticf[animqueue[i]->current].len; k++) {
+                    animqueue[i]->object->data[k].x += animqueue[i]->animate.staticf[animqueue[i]->current].pos[k].x;
+                    animqueue[i]->object->data[k].y += animqueue[i]->animate.staticf[animqueue[i]->current].pos[k].y;
+                }
+
+                SDL_UnlockMutex(renderBufLock);
+
+                // set duration until next frame
+                if (++(animqueue[i]->current) < animqueue[i]->numframes)
+                    animqueue[i]->timer = animqueue[i]->animate.staticf[animqueue[i]->current].duration;
             }
-
-            if (i->timer) {
-                i->timer--;
-                continue;
+            else
+            {
+                SDL_Log("Invalid animation type");
             }
-
-            // animate if timer is 0
-            SDL_LockMutex(renderBufLock);
-
-            for (u32 k = 0; k < i->frames[i->current].len; k++) {
-                i->object->data[k].x += i->frames[i->current].pos[k].x;
-                i->object->data[k].y += i->frames[i->current].pos[k].y;
-            }
-
-            SDL_UnlockMutex(renderBufLock);
-
-            // increment frame
-            if (++(i->current) < i->numframes)
-                i->timer = i->frames[i->current].duration;
         }
 
+        SDL_UnlockMutex(qlock);
         SDL_UnlockMutex(lock);
 
         prev = t;
@@ -157,18 +209,115 @@ static int animationThread(void* restrict ptr)
     return 0;
 }
 
+//
+//  Public functions
+//
+
+animation_t* addStaticAnimation(gameobj_t* restrict obj, const animframe_t* restrict frames, u32 len, u32 reset)
+{
+    rAssert(len);
+    rAssert(frames);
+
+    SDL_LockMutex(lock);
+
+    animation_t* anim = getAnimMem(obj);
+
+    if (!anim)
+        return NULL;
+
+    anim->type = ANIM_TYPE_STATIC;
+    anim->numcycles = 0;
+    anim->numframes = len;
+    anim->reset = reset;
+
+    anim->animate.staticf = frames;
+
+    if (reset & ANIM_RESET_POS)
+        saveCharPos(anim);
+
+    SDL_UnlockMutex(lock);
+
+    return anim;
+}
+
+animation_t* addCallbackAnimation(gameobj_t* restrict obj, animate_f animation, u32 ticks, u32 reset)
+{
+    rAssert(animation);
+
+    SDL_LockMutex(lock);
+
+    animation_t* anim = getAnimMem(obj);
+
+    if (!anim)
+        return NULL;
+
+    anim->type = ANIM_TYPE_CALLBACK;
+    anim->numcycles = 0;
+    anim->numframes = ticks;
+    anim->reset = reset;
+
+    anim->animate.callback = animation;
+
+    if (reset & ANIM_RESET_POS)
+        saveCharPos(anim);
+
+    SDL_UnlockMutex(lock);
+
+    return anim;
+}
+
+void queueAnimation(animation_t* restrict anim, i32 numcycles, u32 start)
+{
+    rAssert(anim);
+    rAssert(anim->object);
+    rAssert(anim->type == ANIM_TYPE_STATIC || anim->type == ANIM_TYPE_CALLBACK);
+
+    if (numqueued >= ANIM_QUEUE_SIZE) {
+        SDL_Log("Failed to queue animation, queue full");
+        return;
+    }
+
+    anim->numcycles = numcycles;
+
+    if (anim->type == ANIM_TYPE_STATIC) {
+        if (start < anim->numframes)
+            anim->current = start;
+        else
+            anim->current = 0;
+
+        anim->timer = anim->animate.staticf[anim->current].duration;
+    } else if (anim->type == ANIM_TYPE_CALLBACK) {
+        anim->timer = anim->numframes;
+    } else {
+        return;
+    }
+
+    SDL_LockMutex(qlock);
+
+    for (u32 i = 0; i < ANIM_QUEUE_SIZE; i++) {
+        if (!animqueue[i]) {
+            animqueue[i] = anim;
+            numqueued++;
+            break;
+        }
+    }
+
+    SDL_UnlockMutex(qlock);
+}
+
 void initAnimationThread(void)
 {
     stop = 0;
 
     lock = SDL_CreateMutex();
+    qlock = SDL_CreateMutex();
 
     if (!lock) {
         SDL_Log("Failed to create animation buf mutex");
         return;
     }
 
-    memset(animbuf, 0, sizeof(animation_t) * ANIM_BUF_SIZE);
+    memset(animbuf, 0, sizeof(animation_t) * ANIM_STO_BUF_SIZE);
 
     thread = SDL_CreateThread(animationThread, "animation thread", NULL);
 
@@ -185,5 +334,6 @@ void cleanupAnimationThread(void)
     stop = 1;
 
     SDL_DestroyMutex(lock);
+    SDL_DestroyMutex(qlock);
 }
 

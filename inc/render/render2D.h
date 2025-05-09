@@ -7,7 +7,7 @@
 #define RENDERTYPE_2D       1
 #define RENDERTYPE_3D       2
 
-#define EPSILON (0.0000001f)
+#define HITBOX_BUF_SIZE     8
 
 typedef void (*render_f)(context_t*);
 
@@ -17,6 +17,12 @@ typedef struct renderer_s {
     render_f draw;
     render_f cleanup;
 } renderer_t;
+
+typedef struct hitbox_s {
+    const gameobj_t* object;
+    f32 dx;
+    f32 dy;
+} hitbox_t;
 
 extern renderer_t r_ascii2D;
 extern SDL_Mutex* renderBufLock;
@@ -29,7 +35,8 @@ void renderCleanupPipeline(context_t* restrict con);
 SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* restrict filename, u32 samplerCnt, u32 uniBufCnt, u32 stoBufCnt, u32 stoTexCnt);
 SDL_Surface* renderLoadBmp(context_t* restrict con, const char* restrict filename);
 
-void setHitbox(f32 x, f32 y, f32 dx, f32 dy);
+void addHitbox(const gameobj_t* restrict object, f32 dx, f32 dy);
+void removeHitbox(const gameobj_t* restrict object);
 
 gameobj_t* addGameObject(const ascii2info_t* info, u32 len, f32 x, f32 y);
 void moveGameObject(const gameobj_t* restrict obj, f32 dx, f32 dy);

@@ -2,6 +2,7 @@
 
 #include <input.h>
 #include <animation.h>
+#include <render/render2D.h>
 #include <debug/rdebug.h>
 
 //
@@ -32,12 +33,6 @@ static SDL_AppResult quit(u32 kdown)
 static SDL_AppResult up(u32 kdown)
 {
     state.up = kdown;
-    
-    if (kdown)
-        birdanimation->numcycles = ANIM_REPEAT;
-    else
-        birdanimation->numcycles = ANIM_SUSPENDED;
-
     return SDL_APP_CONTINUE;
 }
 
@@ -67,6 +62,40 @@ static SDL_AppResult dbreak(u32 kdown)
     return SDL_APP_CONTINUE;
 }
 
+static SDL_AppResult hitboxes(u32 kdown)
+{
+    static u32 show;
+
+    if (!kdown)
+        return SDL_APP_CONTINUE;
+
+    show = !show;
+
+    if (show) {
+        addHitbox(bird, 0.0f, -BIRD_Y_SCALE);
+        addHitbox(fruit[0], 0.0f, 0.0f);
+        addHitbox(fruit[1], 0.0f, 0.0f);
+        addHitbox(fruit[2], 0.0f, 0.0f);
+        addHitbox(fruit[3], 0.0f, 0.0f);
+    } else {
+        removeHitbox(bird);
+        removeHitbox(fruit[0]);
+        removeHitbox(fruit[1]);
+        removeHitbox(fruit[2]);
+        removeHitbox(fruit[3]);
+    }
+
+    return SDL_APP_CONTINUE;
+}
+
+static SDL_AppResult fps(u32 kdown)
+{
+    if (kdown)
+        state.showfps = !state.showfps;
+
+    return SDL_APP_CONTINUE;
+}
+
 //
 //  keyboard mapping
 //
@@ -91,6 +120,8 @@ void setStdKBMapping(void)
     kbmap[SDL_SCANCODE_Q] = quit;
 
     kbmap[SDL_SCANCODE_0] = dbreak;
+    kbmap[SDL_SCANCODE_H] = hitboxes;
+    kbmap[SDL_SCANCODE_F] = fps;
 }
 
 SDL_AppResult handleKBInput(SDL_Scancode key, u32 kdown)

@@ -10,6 +10,7 @@ typedef struct instate_s {
     u8 down;
     u8 left;
     u8 right;
+    u8 showfps;
 } instate_t;
 
 typedef SDL_AppResult (*kbevent_f)(u32);

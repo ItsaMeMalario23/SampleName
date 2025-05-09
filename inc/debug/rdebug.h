@@ -118,7 +118,7 @@ void rReleasePrintf(const char* fmt, ... );
     #define rDebugString( x ) ((void)0)
     #define rDebugStringLevel( lvl, x ) ((void)0)
 
-    inline void rDebugPrintf(const char* fmt, ... ) { }
+    static inline void rDebugPrintf(const char* fmt, ... ) { }
 
 #else
     
