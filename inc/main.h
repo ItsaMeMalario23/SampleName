@@ -22,6 +22,8 @@
 #define CHERRY_X_SCALE  (0.06f)
 #define CHERRY_Y_SCALE  (0.10f)
 
+#define FLAG_Y_OFFSET   (0.006f)
+
 typedef int8_t i8;
 typedef uint8_t u8;
 
@@ -92,6 +94,14 @@ typedef struct gameobj_s {
     u64          len;
     asciidata_t* data;
 } gameobj_t;
+
+typedef struct objectinfo_s {
+    const ascii2info_t* data;
+    u64 len;
+    f32 x, y;
+    f32 xscale;
+    f32 yscale;
+} objectinfo_t;
 
 extern u32 f_int3;
 extern gameobj_t* bird;

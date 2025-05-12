@@ -73,35 +73,36 @@ struct main0_out
 vertex main0_out main0(const device type_StructuredBuffer_asciidata& data [[buffer(0)]], uint gl_VertexIndex [[vertex_id]])
 {
     main0_out out = {};
-    float2 _115;
-    float4 _116;
-    float4 _117;
+    float2 _118;
+    float4 _119;
+    float4 _120;
     do
     {
-        uint _67 = gl_VertexIndex / 6u;
-        if (data._m0[_67].charID == 0u)
+        uint _69 = gl_VertexIndex / 6u;
+        if (data._m0[_69].charID == 0u)
         {
-            _115 = _51;
-            _116 = float4(0.0);
-            _117 = _50;
+            _118 = _51;
+            _119 = float4(0.0);
+            _120 = _50;
             break;
         }
-        uint _73 = gl_VertexIndex % 6u;
-        float _79 = float(data._m0[_67].charID % 19u) * 0.052631579339504241943359375;
-        float _80 = _79 - 0.0032894737087190151214599609375;
-        float _84 = float(data._m0[_67].charID / 19u) * 0.20000000298023223876953125;
-        float _85 = _79 + 0.0493421070277690887451171875;
-        float _86 = _84 + 0.20000000298023223876953125;
-        spvUnsafeArray<float2, 4> _91 = spvUnsafeArray<float2, 4>({ float2(_80, _84), float2(_85, _84), float2(_80, _86), float2(_85, _86) });
-        spvUnsafeArray<float2, 4> _63 = _91;
-        _115 = _63[_52[_73]];
-        _116 = data._m0[_67].color;
-        _117 = float4(((_57[_52[_73]].x * data._m0[_67].scale) + ((device float*)&data._m0[_67].position)[0]) - 1.0, (((_57[_52[_73]].y * data._m0[_67].scale) * 1.77777779102325439453125) + ((device float*)&data._m0[_67].position)[1]) - 1.0, 0.0, 1.0);
+        uint _75 = gl_VertexIndex % 6u;
+        float _81 = float(data._m0[_69].charID % 19u) * 0.052631579339504241943359375;
+        float _82 = _81 - 0.0032894737087190151214599609375;
+        float _86 = float(data._m0[_69].charID / 19u) * 0.20000000298023223876953125;
+        float _87 = _86 - 0.01052631624042987823486328125;
+        float _88 = _81 + 0.0493421070277690887451171875;
+        float _89 = _86 + 0.189473688602447509765625;
+        spvUnsafeArray<float2, 4> _94 = spvUnsafeArray<float2, 4>({ float2(_82, _87), float2(_88, _87), float2(_82, _89), float2(_88, _89) });
+        spvUnsafeArray<float2, 4> _65 = _94;
+        _118 = _65[_52[_75]];
+        _119 = data._m0[_69].color;
+        _120 = float4(((_57[_52[_75]].x * data._m0[_69].scale) + ((device float*)&data._m0[_69].position)[0]) - 1.0, (((_57[_52[_75]].y * data._m0[_69].scale) * 1.77777779102325439453125) + ((device float*)&data._m0[_69].position)[1]) - 1.0, 0.0, 1.0);
         break;
     } while(false);
-    out.out_var_TEXCOORD0 = _115;
-    out.out_var_TEXCOORD1 = _116;
-    out.gl_Position = _117;
+    out.out_var_TEXCOORD0 = _118;
+    out.out_var_TEXCOORD1 = _119;
+    out.gl_Position = _120;
     return out;
 }
 

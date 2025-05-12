@@ -3,16 +3,16 @@
 
 #include <main.h>
 
-#define ANIM_STO_BUF_SIZE       8
-#define ANIM_QUEUE_SIZE         8
+#define ANIM_STO_BUF_SIZE   8
+#define ANIM_QUEUE_SIZE     8
 
-#define ANIM_TICK_DURATION  (0.04f)
-
-#define ANIM_TERMINATE   0
-#define ANIM_REPEAT     -1
+#define ANIM_TERMINATE      0
+#define ANIM_REPEAT        -1
 
 #define ANIM_TYPE_STATIC    0
 #define ANIM_TYPE_CALLBACK  1
+
+#define ANIM_TICK_DURATION  (0.01f)
 
 // animation reset flags
 #define ANIM_RESET_POS      (1u << 0)

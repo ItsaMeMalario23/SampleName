@@ -96,6 +96,26 @@ static SDL_AppResult fps(u32 kdown)
     return SDL_APP_CONTINUE;
 }
 
+static SDL_AppResult incsamples(u32 kdown)
+{
+    if (kdown && renderSamples < 3) {
+        renderSamples++;
+        SDL_Log("samples: %d", renderSamples);
+    }
+
+    return SDL_APP_CONTINUE;
+}
+
+static SDL_AppResult decsamples(u32 kdown)
+{
+    if (kdown && renderSamples) {
+        renderSamples--;
+        SDL_Log("samples: %d", renderSamples);
+    }
+
+    return SDL_APP_CONTINUE;
+}
+
 //
 //  keyboard mapping
 //
@@ -122,6 +142,9 @@ void setStdKBMapping(void)
     kbmap[SDL_SCANCODE_0] = dbreak;
     kbmap[SDL_SCANCODE_H] = hitboxes;
     kbmap[SDL_SCANCODE_F] = fps;
+
+    kbmap[SDL_SCANCODE_U] = decsamples;
+    kbmap[SDL_SCANCODE_I] = incsamples;
 }
 
 SDL_AppResult handleKBInput(SDL_Scancode key, u32 kdown)

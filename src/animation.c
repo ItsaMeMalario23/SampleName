@@ -78,11 +78,14 @@ static void saveCharPos(animation_t* restrict anim)
 static int animationThread(void* restrict ptr)
 {
     f64 dt, frq = (f64) SDL_GetPerformanceFrequency();
-    u64 t, prev = SDL_GetPerformanceCounter();
+    u64 t = 0, prev = SDL_GetPerformanceCounter();
 
     for (;;) {
         if (stop)
             break;
+
+        if (t)
+            prev = t;
 
         // await animation tick
         for (;;) {
@@ -200,8 +203,6 @@ static int animationThread(void* restrict ptr)
 
         SDL_UnlockMutex(qlock);
         SDL_UnlockMutex(lock);
-
-        prev = t;
     }
 
     SDL_Log("Animation thread terminated");

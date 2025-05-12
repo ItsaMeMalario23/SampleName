@@ -11,7 +11,7 @@ float4 main(input inp) : SV_Target0
 {
     inp.color *= texture.Sample(smp, inp.texcoord);
 
-    if (inp.color.a < 0.5f)
+    if (inp.color.a < 0.01f)
         discard;
 
     return inp.color;

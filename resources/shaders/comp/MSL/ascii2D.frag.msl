@@ -19,7 +19,7 @@ fragment main0_out main0(main0_in in [[stage_in]], texture2d<float> _texture [[t
     main0_out out = {};
     float4 _28 = _texture.sample(smp, in.in_var_TEXCOORD0);
     float4 _29 = in.in_var_TEXCOORD1 * _28;
-    if (_29.w < 0.5)
+    if (_29.w < 0.00999999977648258209228515625)
     {
         discard_fragment();
     }

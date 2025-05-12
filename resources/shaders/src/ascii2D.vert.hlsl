@@ -32,7 +32,7 @@ output main(uint id : SV_VertexID)
     uint vert = indices[id % 6];
 
     float u = (data[idx].charID % 19) * (1.0f / 19.0f) - (1.0f / 304.0f);
-    float v = (data[idx].charID / 19) * (1.0f / 5.0f);
+    float v = (data[idx].charID / 19) * (1.0f / 5.0f) - (1.0f / 95.0f);
 
     float2 texcoords[4] = {
         {u + 0.0f          , v + 0.0f         },

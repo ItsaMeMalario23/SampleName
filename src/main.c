@@ -1,5 +1,6 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 
+#include <math.h>
 #include <stdio.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -8,22 +9,11 @@
 
 #include <main.h>
 #include <input.h>
+#include <objects.h>
 #include <animation.h>
 #include <render/render2D.h>
 #include <debug/rdebug.h>
 #include <debug/memtrack.h>
-
-static const ascii2info_t birdinfo[16] = {
-    {'(', 0xffffffff, {-0.0187500, -0.0694444}}, {'@', 0xfcd303ff, {0.0046875, -0.0722222}}, {'-', 0xffffffff, {0.0484375, -0.0305556}}, {'\\', 0xffffffff, {0.0734375, -0.0500000}},
-    {'\\', 0xffffffff, {0.0031250, -0.1361111}}, {')', 0xffffffff, {0.0265625, -0.0750000}}, {'O', 0xffffffff, {0.0500000, -0.0611111}}, {'>', 0xff0000ff, {0.0859375, -0.0944444}},
-    {'\'', 0xff, {0.0515625, -0.0722222}}, {'_', 0xffffffff, {0.0281250, -0.1333333}}, {'_', 0xffffffff, {0.0515625, -0.1333333}}, {'/', 0xffffffff, {0.0765625, -0.1333333}},
-    {'>', 0xff0000ff, {0.0718750, -0.0944444}}, {'-', 0xffffffff, {0.0218750, -0.0305556}}, {'B', 0xfcd303ff, {0.0265625, -0.1222222}}, {'D', 0xfcd303ff, {0.0531250, -0.1222222}},
-};
-
-static const ascii2info_t cherryinfo[6] = {
-    {'O', 0xff0000ff, {0.0218750f, 0.0166667f}}, {'-', 0xff0000ff, {0.0203125f, -0.0166667f}}, {')', 0xff0000ff, {0.0421875f, 0.0083333f}}, {'(', 0xff0000ff, {0.0000000f, 0.0083333f}},
-    {',', 0x40d800ff, {0.0265625f, 0.0694444f}}, {'.', 0x40d800ff, {0.0250000f, 0.0888889f}},
-};
 
 static context_t context = { .name = "[SampleName]", .width = 1920, .height = 1080 };
 static renderer_t* renderer = &r_ascii2D;
@@ -56,7 +46,7 @@ void int3(void)
 
 static instate_t* inputstate;
 
-static u64 frq;
+static f64 frq;
 static u64 prev;
 
 // static bird animation
@@ -66,7 +56,7 @@ static vec2f_t frm3[2] = {{0.0f, 0.0f}, {0.0f, 0.0f}};
 static animframe_t animation[4] = {{frm1, 4, 2}, {frm2, 8, 2}, {frm3, 16, 2}};
 
 // callback bird animation
-static void animateBird(gameobj_t* bird)
+static void animateBird(gameobj_t* restrict bird)
 {
     static u32 bcounter;
 
@@ -82,15 +72,28 @@ static void animateBird(gameobj_t* bird)
         return;
     }
 
-    if (bcounter == 2) {
+    if (bcounter == 3) {
         bird->data[0].y += 0.006f;
         bird->data[1].y += 0.003f;
         bcounter++;
         return;
     }
 
-    if (++bcounter > 5)
+    if (++bcounter > 8)
         bcounter = 0;
+}
+
+// callback flag animation
+static void animateFlag(gameobj_t* restrict flg)
+{
+    if (!flg)
+        return;
+
+    u64 t = SDL_GetTicks();
+    u32 k = 0;
+
+    for (asciidata_t* i = flg->data; i < flg->data + flg->len; i++, k++)
+        i->y = flagdata[k].pos.y + 1.95f + (sinf(((f32) t / 780.0f) + (i->x * 40.0f)) * FLAG_Y_OFFSET);
 }
 
 static animation_t* birdanimation;
@@ -109,32 +112,31 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
     renderInitWindow(&context, 0);
     renderer->init(&context);
 
-    bird = addGameObject(birdinfo, sizeof(birdinfo) / sizeof(ascii2info_t), 0.25f, 0.25f);
-    bird->xscale = BIRD_X_SCALE;
-    bird->yscale = BIRD_Y_SCALE;
+    // add game objects
+    bird = addGameObjectStruct(&birdobj);
 
-    const vec2f_t fpos[4] = {{0.8f, 0.3f}, {1.5f, 1.7f}, {1.0f, 1.8f}, {1.2f, 1.0f}};
+    gameobj_t* flag = addGameObjectStruct(&flagobj);
 
-    for (u32 i = 0; i < 4; i++) {
-        fruit[i] = addGameObject(cherryinfo, 6, fpos[i].x, fpos[i].y);
-        fruit[i]->xscale = CHERRY_X_SCALE;
-        fruit[i]->yscale = CHERRY_Y_SCALE;
-    }
-    
-    frq = SDL_GetPerformanceFrequency();
-    prev = SDL_GetPerformanceCounter();
+    for (u32 i = 0; i < 4; i++)
+       fruit[i] = addGameObjectStruct(cherryobj + i);
 
+    // init keyboard mapping
     setStdKBMapping();
     inputstate = getInputState();
 
+    // init animations
     initAnimationThread();
-    birdanimation = addCallbackAnimation(bird, animateBird, 4, ANIM_RESET_POS | ANIM_RESET_CB | ANIM_KEEPALIVE);
+
+    birdanimation = addCallbackAnimation(bird, animateBird, 12, ANIM_RESET_POS | ANIM_RESET_CB | ANIM_KEEPALIVE);
     queueAnimation(birdanimation, 0, 0);
 
-    if (!birdanimation)
-        SDL_Log("ERROR: Bird animation null ref");
+    animation_t* flaganimation = addCallbackAnimation(flag, animateFlag, 0, 0);
+    queueAnimation(flaganimation, ANIM_REPEAT, 0);
 
     SDL_AddEventWatch(lifecycleWatchdog, NULL);
+
+    frq = (f64) SDL_GetPerformanceFrequency();
+    prev = SDL_GetPerformanceCounter();
 
     return SDL_APP_CONTINUE;
 }

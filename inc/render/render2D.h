@@ -9,6 +9,11 @@
 
 #define HITBOX_BUF_SIZE     8
 
+#define CLEAR_COLOR_R   ( 24.0f / 255.0f)
+#define CLEAR_COLOR_G   ( 32.0f / 255.0f)
+#define CLEAR_COLOR_B   ( 84.0f / 255.0f)
+#define CLEAR_COLOR_A   (1.0f)
+
 typedef void (*render_f)(context_t*);
 
 typedef struct renderer_s {
@@ -26,12 +31,14 @@ typedef struct hitbox_s {
 
 extern renderer_t r_ascii2D;
 extern SDL_Mutex* renderBufLock;
+extern u32 renderSamples;
 
 void renderInitWindow(context_t* restrict con, SDL_WindowFlags flags);
-void renderInitPipeline(context_t* restrict con);
+void renderInitPipelines(context_t* restrict con);
 void renderDraw(context_t* restrict con);
 void renderCleanupWindow(context_t* restrict con);
-void renderCleanupPipeline(context_t* restrict con);
+void renderCleanupPipelines(context_t* restrict con);
+
 SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* restrict filename, u32 samplerCnt, u32 uniBufCnt, u32 stoBufCnt, u32 stoTexCnt);
 SDL_Surface* renderLoadBmp(context_t* restrict con, const char* restrict filename);
 
@@ -39,6 +46,7 @@ void addHitbox(const gameobj_t* restrict object, f32 dx, f32 dy);
 void removeHitbox(const gameobj_t* restrict object);
 
 gameobj_t* addGameObject(const ascii2info_t* info, u32 len, f32 x, f32 y);
+gameobj_t* addGameObjectStruct(const objectinfo_t* restrict object);
 void moveGameObject(const gameobj_t* restrict obj, f32 dx, f32 dy);
 void updateGameObjectPos(gameobj_t* restrict obj);
 void removeGameObject(gameobj_t* restrict obj);

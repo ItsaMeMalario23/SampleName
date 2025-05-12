@@ -11,6 +11,7 @@ target_sources(main
 PRIVATE
     src/main.c
     src/input.c
+    src/objects.c
     src/animation.c
     src/render/render2D.c
     src/debug/rdebug.c
