@@ -2,6 +2,7 @@
 #include <SDL3/SDL.h>
 
 #include <render/render2D.h>
+#include <render/renderer.h>
 #include <debug/rdebug.h>
 
 static SDL_GPUGraphicsPipeline* pipeline;
@@ -447,11 +448,11 @@ void renderDraw(context_t* restrict con)
             if (!i->object)
                 continue;
 
-            data[k] = (vec2f_t) { i->object->x + i->dx, i->object->y + i->dy + i->object->yscale };
+            data[k]     = (vec2f_t) { i->object->x + i->dx,                     i->object->y + i->dy + i->object->yscale };
             data[k + 1] = (vec2f_t) { i->object->x + i->dx + i->object->xscale, i->object->y + i->dy + i->object->yscale };
-            data[k + 2] = (vec2f_t) { i->object->x + i->dx, i->object->y + i->dy };
-            data[k + 3] = (vec2f_t) { i->object->x + i->dx + i->object->xscale, i->object->y + i->dy };
-            data[k + 4] = (vec2f_t) { i->object->x + i->dx, i->object->y + i->dy };
+            data[k + 2] = (vec2f_t) { i->object->x + i->dx,                     i->object->y + i->dy                     };
+            data[k + 3] = (vec2f_t) { i->object->x + i->dx + i->object->xscale, i->object->y + i->dy                     };
+            data[k + 4] = (vec2f_t) { i->object->x + i->dx,                     i->object->y + i->dy                     };
             data[k + 5] = (vec2f_t) { i->object->x + i->dx + i->object->xscale, i->object->y + i->dy + i->object->yscale };
 
             k += 6;

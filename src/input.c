@@ -2,7 +2,7 @@
 
 #include <input.h>
 #include <animation.h>
-#include <render/render2D.h>
+#include <render/renderer.h>
 #include <debug/rdebug.h>
 
 //
@@ -72,11 +72,11 @@ static SDL_AppResult hitboxes(u32 kdown)
     show = !show;
 
     if (show) {
-        addHitbox(bird, 0.0f, -BIRD_Y_SCALE);
-        addHitbox(fruit[0], 0.0f, 0.0f);
-        addHitbox(fruit[1], 0.0f, 0.0f);
-        addHitbox(fruit[2], 0.0f, 0.0f);
-        addHitbox(fruit[3], 0.0f, 0.0f);
+        addHitbox(bird);
+        addHitbox(fruit[0]);
+        addHitbox(fruit[1]);
+        addHitbox(fruit[2]);
+        addHitbox(fruit[3]);
     } else {
         removeHitbox(bird);
         removeHitbox(fruit[0]);
@@ -96,7 +96,7 @@ static SDL_AppResult fps(u32 kdown)
     return SDL_APP_CONTINUE;
 }
 
-static SDL_AppResult incsamples(u32 kdown)
+/* static SDL_AppResult incsamples(u32 kdown)
 {
     if (kdown && renderSamples < 3) {
         renderSamples++;
@@ -114,12 +114,43 @@ static SDL_AppResult decsamples(u32 kdown)
     }
 
     return SDL_APP_CONTINUE;
+} */
+
+static SDL_AppResult scrleft(u32 kdown)
+{
+    if (kdown)
+        state.screen_dx -= 0.02f;
+
+    return SDL_APP_CONTINUE;
+}
+
+static SDL_AppResult scrright(u32 kdown)
+{
+    if (kdown)
+        state.screen_dx += 0.02f;
+
+    return SDL_APP_CONTINUE;
+}
+
+static SDL_AppResult scrup(u32 kdown)
+{
+    if (kdown)
+        state.screen_dy += 0.02f;
+
+    return SDL_APP_CONTINUE;
+}
+
+static SDL_AppResult scrdown(u32 kdown)
+{
+    if (kdown)
+        state.screen_dy -= 0.02f;
+    
+    return SDL_APP_CONTINUE;
 }
 
 //
 //  keyboard mapping
 //
-
 static kbevent_f kbmap[NUM_KEYS];
 
 void setStdKBMapping(void)
@@ -143,8 +174,10 @@ void setStdKBMapping(void)
     kbmap[SDL_SCANCODE_H] = hitboxes;
     kbmap[SDL_SCANCODE_F] = fps;
 
-    kbmap[SDL_SCANCODE_U] = decsamples;
-    kbmap[SDL_SCANCODE_I] = incsamples;
+    kbmap[SDL_SCANCODE_U] = scrleft;
+    kbmap[SDL_SCANCODE_I] = scrright;
+    kbmap[SDL_SCANCODE_J] = scrdown;
+    kbmap[SDL_SCANCODE_K] = scrup;
 }
 
 SDL_AppResult handleKBInput(SDL_Scancode key, u32 kdown)

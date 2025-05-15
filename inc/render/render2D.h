@@ -14,15 +14,6 @@
 #define CLEAR_COLOR_B   ( 84.0f / 255.0f)
 #define CLEAR_COLOR_A   (1.0f)
 
-typedef void (*render_f)(context_t*);
-
-typedef struct renderer_s {
-    u64      type;
-    render_f init;
-    render_f draw;
-    render_f cleanup;
-} renderer_t;
-
 typedef struct hitbox_s {
     const gameobj_t* object;
     f32 dx;

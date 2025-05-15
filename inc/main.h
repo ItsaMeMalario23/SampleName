@@ -41,15 +41,6 @@ typedef double f64;
 
 typedef struct animation_s animation_t;
 
-typedef struct context_s {
-    const char*     name;
-    const char*     path;
-    SDL_Window*     window;
-    SDL_GPUDevice*  dev;
-    u32             width;
-    u32             height;
-} context_t;
-
 typedef struct vec2f_s {
     f32 x;
     f32 y;
@@ -87,10 +78,12 @@ typedef struct asciidata_s {
 #define ASCII2D_OBJ_BUF_SIZE 32
 
 typedef struct gameobj_s {
-    f32          dx, dy;    /* only used to TEMPORARILY store translations */
-    f32          x, y;      /* global coordinates of obj origin */
+    f32          dx, dy;        /* only used to TEMPORARILY store translations */
+    f32          x, y;          /* global coordinates of obj origin */
     f32          xscale;
     f32          yscale;
+    f32          hitbox_dx;     /* optional hitbox offset */
+    f32          hitbox_dy;
     u64          len;
     asciidata_t* data;
 } gameobj_t;
@@ -101,6 +94,8 @@ typedef struct objectinfo_s {
     f32 x, y;
     f32 xscale;
     f32 yscale;
+    f32 hitbox_dx;
+    f32 hitbox_dy;
 } objectinfo_t;
 
 extern u32 f_int3;

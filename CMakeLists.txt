@@ -13,7 +13,8 @@ PRIVATE
     src/input.c
     src/objects.c
     src/animation.c
-    src/render/render2D.c
+    src/render/render_utils.c
+    src/render/renderer.c
     src/debug/rdebug.c
     src/debug/memtrack.c
 )

@@ -1,7 +1,7 @@
 #include <SDL3/SDL.h>
 
 #include <animation.h>
-#include <render/render2D.h>
+#include <render/renderer.h>
 #include <debug/rdebug.h>
 #include <debug/memtrack.h>
 

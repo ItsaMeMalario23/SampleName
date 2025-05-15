@@ -15,3 +15,7 @@ shadercross "resources/shaders/src/box.vert.hlsl" -o "resources/shaders/comp/DXI
 shadercross "resources/shaders/src/box.frag.hlsl" -o "resources/shaders/comp/SPV/box.frag.spv"
 shadercross "resources/shaders/src/box.frag.hlsl" -o "resources/shaders/comp/MSL/box.frag.msl"
 shadercross "resources/shaders/src/box.frag.hlsl" -o "resources/shaders/comp/DXIL/box.frag.dxil"
+
+shadercross "resources/shaders/src/asciiLayers.vert.hlsl" -o "resources/shaders/comp/SPV/asciiLayers.vert.spv"
+shadercross "resources/shaders/src/asciiLayers.vert.hlsl" -o "resources/shaders/comp/MSL/asciiLayers.vert.msl"
+shadercross "resources/shaders/src/asciiLayers.vert.hlsl" -o "resources/shaders/comp/DXIL/asciiLayers.vert.dxil"

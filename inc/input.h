@@ -6,6 +6,8 @@
 #define NUM_KEYS    400
 
 typedef struct instate_s {
+    f32 screen_dx;
+    f32 screen_dy;
     u8 up;
     u8 down;
     u8 left;

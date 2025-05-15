@@ -11,12 +11,11 @@
 #include <input.h>
 #include <objects.h>
 #include <animation.h>
-#include <render/render2D.h>
+#include <render/renderer.h>
 #include <debug/rdebug.h>
 #include <debug/memtrack.h>
 
 static context_t context = { .name = "[SampleName]", .width = 1920, .height = 1080 };
-static renderer_t* renderer = &r_ascii2D;
 
 bool lifecycleWatchdog(void* userdata, SDL_Event* event)
 {
@@ -93,36 +92,67 @@ static void animateFlag(gameobj_t* restrict flg)
     u32 k = 0;
 
     for (asciidata_t* i = flg->data; i < flg->data + flg->len; i++, k++)
-        i->y = flagdata[k].pos.y + 1.95f + (sinf(((f32) t / 780.0f) + (i->x * 40.0f)) * FLAG_Y_OFFSET);
+        i->y = flagdata[k].pos.y + flagobj.y + (sinf(((f32) t / 780.0f) + (i->x * 40.0f)) * FLAG_Y_OFFSET);
 }
 
 static animation_t* birdanimation;
 gameobj_t* bird;
 gameobj_t* fruit[4];
+gameobj_t* pillars[8];
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         SDL_Log("Failed to initialized SDL: %s", SDL_GetError());
-        return -1;
+        return SDL_APP_FAILURE;
     }
 
     rSetDebugBreak(int3);
 
-    renderInitWindow(&context, 0);
-    renderer->init(&context);
+    renderInit(&context, SDL_WINDOW_BORDERLESS);
 
-    // add game objects
+    // init game objects
     bird = addGameObjectStruct(&birdobj);
+    bird->hitbox_dy = -BIRD_Y_SCALE;
 
     gameobj_t* flag = addGameObjectStruct(&flagobj);
+    gameobj_t* pole = addGameObjectStruct(&poleobj);
+    gameobj_t* terrain = addGameObjectStruct(&terrainobj);
+    gameobj_t* t2 = addGameObjectStruct(&terrainobj);
+    gameobj_t* t3 = addGameObjectStruct(&terrainobj);
+    gameobj_t* t4 = addGameObjectStruct(&terrainobj);
 
     for (u32 i = 0; i < 4; i++)
        fruit[i] = addGameObjectStruct(cherryobj + i);
 
+    for (u32 i = 0; i < 8; i++)
+        pillars[i] = addGameObjectStruct(pillarobj + i);
+
+    addObjectToLayer(fruit[0], 0);
+    addObjectToLayer(fruit[1], 1);
+    addObjectToLayer(fruit[2], 2);
+    addObjectToLayer(fruit[3], 3);
+    addObjectToLayer(flag, 3);
+    addObjectToLayer(pole, 3);
+    addObjectToLayer(terrain, 1);
+    addObjectToLayer(t2, 2);
+    addObjectToLayer(t3, 3);
+    addObjectToLayer(t4, 4);
+    addObjectToLayer(bird, 5);
+    addObjectToLayer(pillars[0], 1);
+    addObjectToLayer(pillars[1], 1);
+    addObjectToLayer(pillars[2], 2);
+    addObjectToLayer(pillars[3], 2);
+    addObjectToLayer(pillars[4], 3);
+    addObjectToLayer(pillars[5], 3);
+    addObjectToLayer(pillars[6], 4);
+    addObjectToLayer(pillars[7], 4);
+
     // init keyboard mapping
     setStdKBMapping();
     inputstate = getInputState();
+    inputstate->screen_dx = 0.0f;
+    inputstate->screen_dy = -0.14f;
 
     // init animations
     initAnimationThread();
@@ -175,17 +205,23 @@ SDL_AppResult SDL_AppIterate(void* appstate)
         counter = 0;
     }
 
-    if (bird && inputstate->up)
-        bird->dy += 0.192f * dt;
+    if (inputstate->up) {
+        bird->dy += 0.256f * dt;
+    }
 
-    if (bird && inputstate->left)
-        bird->dx -= 0.108f * dt;
+    if (inputstate->left) {
+        bird->dx -= 0.144f * dt;
+        inputstate->screen_dx += 0.144f * dt;
+    }
 
-    if (bird && inputstate->down)
-        bird->dy -= 0.192f * dt;
+    if (inputstate->down) {
+        bird->dy -= 0.256f * dt;
+    }
 
-    if (bird && inputstate->right)
-        bird->dx += 0.108f * dt;
+    if (inputstate->right) {
+        bird->dx += 0.144f * dt;
+        inputstate->screen_dx -= 0.144f * dt;
+    }
 
     if (fnotzero(bird->dx) || fnotzero(bird->dy))
         birdanimation->numcycles = ANIM_REPEAT;
@@ -194,9 +230,7 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
     updateGameObjectPos(bird);
 
-    handleCollision();
-
-    renderer->draw(&context);
+    renderDraw(&context);
 
     prev = t;
 
@@ -205,7 +239,6 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
 void SDL_AppQuit(void* appstate, SDL_AppResult result)
 {
-    renderer->cleanup(&context);
-    renderCleanupWindow(&context);
+    renderCleanup(&context);
     cleanupAnimationThread();
 }
