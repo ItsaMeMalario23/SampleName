@@ -8,7 +8,6 @@
 //
 //  input state
 //
-
 static instate_t state;
 
 instate_t* getInputState(void)
@@ -19,7 +18,6 @@ instate_t* getInputState(void)
 //
 //  input callbacks
 //
-
 static SDL_AppResult nop(u32 kdown)
 {
     return SDL_APP_CONTINUE;
@@ -71,6 +69,7 @@ static SDL_AppResult hitboxes(u32 kdown)
 
     show = !show;
 
+    /*
     if (show) {
         addHitbox(bird);
         addHitbox(fruit[0]);
@@ -84,6 +83,7 @@ static SDL_AppResult hitboxes(u32 kdown)
         removeHitbox(fruit[2]);
         removeHitbox(fruit[3]);
     }
+    */
 
     return SDL_APP_CONTINUE;
 }

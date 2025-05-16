@@ -5,6 +5,10 @@
 
 #define NUM_KEYS    400
 
+typedef SDL_AppResult (*kbevent_f)(u32);
+
+typedef void (*inputmap_f)(void);
+
 typedef struct instate_s {
     f32 screen_dx;
     f32 screen_dy;
@@ -14,8 +18,6 @@ typedef struct instate_s {
     u8 right;
     u8 showfps;
 } instate_t;
-
-typedef SDL_AppResult (*kbevent_f)(u32);
 
 instate_t* getInputState(void);
 

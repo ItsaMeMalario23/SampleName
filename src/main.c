@@ -44,61 +44,8 @@ void int3(void)
 }
 
 static instate_t* inputstate;
-
 static f64 frq;
 static u64 prev;
-
-// static bird animation
-static vec2f_t frm1[2] = {{0.0f, -0.006f}, {0.0f, -0.003f}};
-static vec2f_t frm2[2] = {{0.0f, 0.006f}, {0.0f, 0.003f}};
-static vec2f_t frm3[2] = {{0.0f, 0.0f}, {0.0f, 0.0f}};
-static animframe_t animation[4] = {{frm1, 4, 2}, {frm2, 8, 2}, {frm3, 16, 2}};
-
-// callback bird animation
-static void animateBird(gameobj_t* restrict bird)
-{
-    static u32 bcounter;
-
-    if (!bird) {
-        bcounter = 0;
-        return;
-    }
-
-    if (bcounter == 0) {
-        bird->data[0].y -= 0.006f;
-        bird->data[1].y -= 0.003f;
-        bcounter++;
-        return;
-    }
-
-    if (bcounter == 3) {
-        bird->data[0].y += 0.006f;
-        bird->data[1].y += 0.003f;
-        bcounter++;
-        return;
-    }
-
-    if (++bcounter > 8)
-        bcounter = 0;
-}
-
-// callback flag animation
-static void animateFlag(gameobj_t* restrict flg)
-{
-    if (!flg)
-        return;
-
-    u64 t = SDL_GetTicks();
-    u32 k = 0;
-
-    for (asciidata_t* i = flg->data; i < flg->data + flg->len; i++, k++)
-        i->y = flagdata[k].pos.y + flagobj.y + (sinf(((f32) t / 780.0f) + (i->x * 40.0f)) * FLAG_Y_OFFSET);
-}
-
-static animation_t* birdanimation;
-gameobj_t* bird;
-gameobj_t* fruit[4];
-gameobj_t* pillars[8];
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 {
@@ -109,59 +56,20 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 
     rSetDebugBreak(int3);
 
-    renderInit(&context, SDL_WINDOW_BORDERLESS);
+    renderInit(&context, SDL_WINDOW_BORDERLESS, RENDER_MODE_LAYERED);
 
-    // init game objects
-    bird = addGameObjectStruct(&birdobj);
-    bird->hitbox_dy = -BIRD_Y_SCALE;
+    if (getRenderMode() == RENDER_MODE_UNDEF) {
+        SDL_Log("Failed to initialize renderer");
+        return SDL_APP_FAILURE;
+    }
 
-    gameobj_t* flag = addGameObjectStruct(&flagobj);
-    gameobj_t* pole = addGameObjectStruct(&poleobj);
-    gameobj_t* terrain = addGameObjectStruct(&terrainobj);
-    gameobj_t* t2 = addGameObjectStruct(&terrainobj);
-    gameobj_t* t3 = addGameObjectStruct(&terrainobj);
-    gameobj_t* t4 = addGameObjectStruct(&terrainobj);
+    initAnimationThread();
 
-    for (u32 i = 0; i < 4; i++)
-       fruit[i] = addGameObjectStruct(cherryobj + i);
+    loadScene(&scene1);
 
-    for (u32 i = 0; i < 8; i++)
-        pillars[i] = addGameObjectStruct(pillarobj + i);
-
-    addObjectToLayer(fruit[0], 0);
-    addObjectToLayer(fruit[1], 1);
-    addObjectToLayer(fruit[2], 2);
-    addObjectToLayer(fruit[3], 3);
-    addObjectToLayer(flag, 3);
-    addObjectToLayer(pole, 3);
-    addObjectToLayer(terrain, 1);
-    addObjectToLayer(t2, 2);
-    addObjectToLayer(t3, 3);
-    addObjectToLayer(t4, 4);
-    addObjectToLayer(bird, 5);
-    addObjectToLayer(pillars[0], 1);
-    addObjectToLayer(pillars[1], 1);
-    addObjectToLayer(pillars[2], 2);
-    addObjectToLayer(pillars[3], 2);
-    addObjectToLayer(pillars[4], 3);
-    addObjectToLayer(pillars[5], 3);
-    addObjectToLayer(pillars[6], 4);
-    addObjectToLayer(pillars[7], 4);
-
-    // init keyboard mapping
-    setStdKBMapping();
     inputstate = getInputState();
     inputstate->screen_dx = 0.0f;
     inputstate->screen_dy = -0.14f;
-
-    // init animations
-    initAnimationThread();
-
-    birdanimation = addCallbackAnimation(bird, animateBird, 12, ANIM_RESET_POS | ANIM_RESET_CB | ANIM_KEEPALIVE);
-    queueAnimation(birdanimation, 0, 0);
-
-    animation_t* flaganimation = addCallbackAnimation(flag, animateFlag, 0, 0);
-    queueAnimation(flaganimation, ANIM_REPEAT, 0);
 
     SDL_AddEventWatch(lifecycleWatchdog, NULL);
 
@@ -205,30 +113,7 @@ SDL_AppResult SDL_AppIterate(void* appstate)
         counter = 0;
     }
 
-    if (inputstate->up) {
-        bird->dy += 0.256f * dt;
-    }
-
-    if (inputstate->left) {
-        bird->dx -= 0.144f * dt;
-        inputstate->screen_dx += 0.144f * dt;
-    }
-
-    if (inputstate->down) {
-        bird->dy -= 0.256f * dt;
-    }
-
-    if (inputstate->right) {
-        bird->dx += 0.144f * dt;
-        inputstate->screen_dx -= 0.144f * dt;
-    }
-
-    if (fnotzero(bird->dx) || fnotzero(bird->dy))
-        birdanimation->numcycles = ANIM_REPEAT;
-    else
-        birdanimation->numcycles = ANIM_TERMINATE;
-
-    updateGameObjectPos(bird);
+    movePlayer(dt);
 
     renderDraw(&context);
 

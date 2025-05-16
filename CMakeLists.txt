@@ -13,6 +13,7 @@ PRIVATE
     src/input.c
     src/objects.c
     src/animation.c
+    src/worldsim.c
     src/render/render_utils.c
     src/render/renderer.c
     src/debug/rdebug.c

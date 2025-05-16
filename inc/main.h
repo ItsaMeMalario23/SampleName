@@ -60,14 +60,6 @@ typedef struct mat4_s {
     f32 m41, m42, m43, m44;
 } mat4_t;
 
-typedef struct ascii2info_s {
-    u32     charID;
-    u32     color;
-    vec2f_t pos;
-} ascii2info_t;
-
-#define ASCII2D_BUF_SIZE 1024
-
 typedef struct asciidata_s {
     f32 r, g, b, a;
     f32 x, y;
@@ -75,32 +67,21 @@ typedef struct asciidata_s {
     u32 charID;
 } asciidata_t;
 
-#define ASCII2D_OBJ_BUF_SIZE 32
-
 typedef struct gameobj_s {
-    f32          dx, dy;        /* only used to TEMPORARILY store translations */
-    f32          x, y;          /* global coordinates of obj origin */
-    f32          xscale;
-    f32          yscale;
-    f32          hitbox_dx;     /* optional hitbox offset */
-    f32          hitbox_dy;
-    u64          len;
-    asciidata_t* data;
+    f32                 dx, dy;        /* only used to TEMPORARILY store translations */
+    f32                 x, y;          /* global coordinates of obj origin, should NOT be modified directly */
+    f32                 xscale;
+    f32                 yscale;
+    f32                 hitbox_dx;     /* optional hitbox offset */
+    f32                 hitbox_dy;
+    u32                 len;
+    u16                 id;
+    u16                 visible;
+    asciidata_t*        data;
+    animation_t*        animation;
 } gameobj_t;
 
-typedef struct objectinfo_s {
-    const ascii2info_t* data;
-    u64 len;
-    f32 x, y;
-    f32 xscale;
-    f32 yscale;
-    f32 hitbox_dx;
-    f32 hitbox_dy;
-} objectinfo_t;
-
 extern u32 f_int3;
-extern gameobj_t* bird;
-extern gameobj_t* fruit[4];
 
 static inline bool fnotzero(f32 f) { return f > EPSILON || f < -EPSILON; }
 

@@ -36,7 +36,7 @@ typedef struct context_s {
 } context_t;
 
 typedef struct renderlayer_s {
-    gameobj_t** objects;
+    u8*         objects;
     u32         numobjects;
     u32         depth;
 } renderlayer_t;
@@ -59,21 +59,27 @@ void renderCleanupWindow(context_t* restrict con);
 //
 //  Render
 //
-void renderInit(context_t* restrict con, SDL_WindowFlags flags);
+void renderInit(context_t* restrict con, SDL_WindowFlags flags, u32 mode);
 void renderDraw(context_t* restrict con);
+u32  getRenderMode(void);
+void renderMode(u32 mode);
+void renderToggleHitboxes(void);
 void renderCleanup(context_t* restrict con);
+
+void addObjectToRenderBuf(u32 object);
+void addObjectToLayer(u32 object, u32 layer);
+void addHitbox(gameobj_t* object);
+void removeHitbox(gameobj_t* object);
+void resetRenderBuffers(void);
 
 //
 //  Worldsim
 //
-void addObjectToLayer(gameobj_t* object, u32 layer);
-void addHitbox(gameobj_t* object);
-void removeHitbox(gameobj_t* object);
 void handleCollision(void);
-gameobj_t* addGameObject(const ascii2info_t* info, u32 len, f32 x, f32 y);
-gameobj_t* addGameObjectStruct(const objectinfo_t* restrict object);
-void moveGameObject(const gameobj_t* restrict obj, f32 dx, f32 dy);
-void updateGameObjectPos(gameobj_t* restrict obj);
+//gameobj_t* addGameObject(const ascii2info_t* info, u32 len, f32 x, f32 y);
+//gameobj_t* addGameObjectStruct(const objectinfo_t* restrict object);
+//void moveGameObject(const gameobj_t* restrict obj, f32 dx, f32 dy);
+//void updateGameObjectPos(gameobj_t* restrict obj);
 void removeGameObject(gameobj_t* restrict obj);
 void resetAllGameObjects(void);
 

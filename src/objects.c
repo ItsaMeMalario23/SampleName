@@ -1,7 +1,12 @@
+#include <math.h>
+#include <SDL3/SDL.h>
+
 #include <objects.h>
+#include <input.h>
+#include <render/renderer.h>
 
 //
-//  Char data
+//  Object char data
 //
 const ascii2info_t birddata[16] = {
     {'(', 0xffffffff, {-0.0187500, -0.0694444}}, {'@', 0xfcd303ff, {0.0046875, -0.0722222}}, {'-', 0xffffffff, {0.0484375, -0.0305556}}, {'\\', 0xffffffff, {0.0734375, -0.0500000}},
@@ -98,82 +103,94 @@ const ascii2info_t terraindata[14] = {
 };
 
 //
-//  Object data
+//  Animation callbacks
 //
-const objectinfo_t birdobj = {
-    .data = birddata,
-    .len = sizeof(birddata) / sizeof(ascii2info_t),
-    .x = 0.7f,
-    .y = 1.4f,
-    .xscale = BIRD_X_SCALE,
-    .yscale = BIRD_Y_SCALE
-};
+static void animateFlag(gameobj_t* restrict flg)
+{
+    if (!flg)
+        return;
 
-const objectinfo_t flagobj = {
-    .data = flagdata,
-    .len = sizeof(flagdata) / sizeof(ascii2info_t),
-    .x = 0.1f,
-    .y = 1.75f
-};
+    u64 t = SDL_GetTicks();
+    u32 k = 0;
 
-const objectinfo_t poleobj = {
-    .data = flagpoledata,
-    .len = sizeof(flagpoledata) / sizeof(ascii2info_t),
-    .x = 0.056f,
-    .y = 1.664f
-};
+    for (asciidata_t* i = flg->data; i < flg->data + flg->len; i++, k++)
+        i->y = flagdata[k].pos.y + flg->y + (sinf(((f32) t / 780.0f) + (i->x * 40.0f)) * FLAG_Y_OFFSET);
+}
 
-const objectinfo_t terrainobj = {
-    .data = terraindata,
-    .len = sizeof(terraindata) / sizeof(ascii2info_t),
-    .x = 1.488f,
-    .y = 0.66f
-};
+static void animateBird(gameobj_t* restrict bird)
+{
+    static u32 bcounter;
 
-const objectinfo_t pillarobj[8] = {{
-        .data = pillardata,
-        .len = sizeof(pillardata) / sizeof(ascii2info_t),
-        .x = 0.4f,
-        .y = 1.0f
-    }, {
-        .data = pillardata,
-        .len = sizeof(pillardata) / sizeof(ascii2info_t),
-        .x = 1.4f,
-        .y = 1.0f
-    }, {
-        .data = pillardata,
-        .len = sizeof(pillardata) / sizeof(ascii2info_t),
-        .x = 0.4f,
-        .y = 1.0f
-    }, {
-        .data = pillardata,
-        .len = sizeof(pillardata) / sizeof(ascii2info_t),
-        .x = 1.4f,
-        .y = 1.0f
-    }, {
-        .data = pillardata,
-        .len = sizeof(pillardata) / sizeof(ascii2info_t),
-        .x = 0.4f,
-        .y = 1.0f
-    }, {
-        .data = pillardata,
-        .len = sizeof(pillardata) / sizeof(ascii2info_t),
-        .x = 1.4f,
-        .y = 1.0f
-    }, {
-        .data = pillardata,
-        .len = sizeof(pillardata) / sizeof(ascii2info_t),
-        .x = 0.4f,
-        .y = 1.0f
-    }, {
-        .data = pillardata,
-        .len = sizeof(pillardata) / sizeof(ascii2info_t),
-        .x = 1.4f,
-        .y = 1.0f
+    if (!bird) {
+        bcounter = 0;
+        return;
     }
-};
 
-const objectinfo_t cherryobj[4] = {{
+    if (bcounter == 0) {
+        bird->data[0].y -= 0.006f;
+        bird->data[1].y -= 0.003f;
+        bcounter++;
+        return;
+    }
+
+    if (bcounter == 3) {
+        bird->data[0].y += 0.006f;
+        bird->data[1].y += 0.003f;
+        bcounter++;
+        return;
+    }
+
+    if (++bcounter > 8)
+        bcounter = 0;
+}
+
+//
+//  Scenes
+//
+const sceneinfo_t scene1 = {
+    .kbmapping = setStdKBMapping,
+    .rendermode = RENDER_MODE_LAYERED,
+    .flags = SCENE_RENDER_ALL,
+    .player_x = 0.7f,
+    .player_y = 1.4f,
+    .player = &(objectinfo_t) {
+        .data = birddata,
+        .len = sizeof(birddata) / sizeof(ascii2info_t),
+        .xscale = BIRD_X_SCALE,
+        .yscale = BIRD_Y_SCALE,
+        .hitbox_dy = -BIRD_Y_SCALE,
+        .numanimations = 1,
+        .animations = (animinfo_t[]) {{
+            .type = ANIM_TYPE_CALLBACK,
+            .flags = ANIM_AUTOQ_SUSPEND | ANIM_RESET_POS | ANIM_RESET_CB | ANIM_KEEPALIVE,
+            .ticks = 12,
+            .callback = animateBird
+        }}
+    },
+    .numobjects = 15,
+    .objects = (objectinfo_t[15]) {{
+        .data = flagdata,
+        .len = sizeof(flagdata) / sizeof(ascii2info_t),
+        .x = 0.1f,
+        .y = 1.75f,
+        .numanimations = 1,
+        .animations = (animinfo_t[]) {{
+            .type = ANIM_TYPE_CALLBACK,
+            .flags = ANIM_AUTOQ_REPEAT,
+            .ticks = 0,
+            .callback = animateFlag
+        }}
+    }, {
+        .data = flagpoledata,
+        .len = sizeof(flagpoledata) / sizeof(ascii2info_t),
+        .x = 0.056f,
+        .y = 1.664f
+    }, {
+        .data = terraindata,
+        .len = sizeof(terraindata) / sizeof(ascii2info_t),
+        .x = 1.488f,
+        .y = 0.66f
+    }, {
         .data = cherrydata,
         .len = sizeof(cherrydata) / sizeof(ascii2info_t),
         .x = 0.8f,
@@ -201,5 +218,46 @@ const objectinfo_t cherryobj[4] = {{
         .y = 1.0f,
         .xscale = CHERRY_X_SCALE,
         .yscale = CHERRY_Y_SCALE
-    },
+    }, {
+        .data = pillardata,
+        .len = sizeof(pillardata) / sizeof(ascii2info_t),
+        .x = 0.4f,
+        .y = 1.0f
+    }, {
+        .data = pillardata,
+        .len = sizeof(pillardata) / sizeof(ascii2info_t),
+        .x = 1.4f,
+        .y = 1.0f
+    }, {
+        .data = pillardata,
+        .len = sizeof(pillardata) / sizeof(ascii2info_t),
+        .x = 0.4f,
+        .y = 1.0f
+    }, {
+        .data = pillardata,
+        .len = sizeof(pillardata) / sizeof(ascii2info_t),
+        .x = 1.4f,
+        .y = 1.0f
+    }, {
+        .data = pillardata,
+        .len = sizeof(pillardata) / sizeof(ascii2info_t),
+        .x = 0.4f,
+        .y = 1.0f
+    }, {
+        .data = pillardata,
+        .len = sizeof(pillardata) / sizeof(ascii2info_t),
+        .x = 1.4f,
+        .y = 1.0f
+    }, {
+        .data = pillardata,
+        .len = sizeof(pillardata) / sizeof(ascii2info_t),
+        .x = 0.4f,
+        .y = 1.0f
+    }, {
+        .data = pillardata,
+        .len = sizeof(pillardata) / sizeof(ascii2info_t),
+        .x = 1.4f,
+        .y = 1.0f
+    }},
+    .layers = (i8[16]) { 3, 3, 4, 0, 1, 2, 3, 1, 1, 2, 2, 3, 3, 4, 4, 5 }
 };

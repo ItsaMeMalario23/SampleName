@@ -34,7 +34,7 @@ SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* restrict fi
         fmt = SDL_GPU_SHADERFORMAT_SPIRV;
         entry = "main";
     } else {
-        SDL_Log("Failed to recognize shader format");
+        SDL_Log("ERROR: Failed to recognize shader format");
         return NULL;
     }
 
@@ -42,7 +42,7 @@ SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* restrict fi
     void* code = SDL_LoadFile(path, &len);
 
     if (!code) {
-        SDL_Log("Failed to load shader: %s", path);
+        SDL_Log("ERROR: Failed to load shader: %s", path);
         return NULL;
     }
 
@@ -61,7 +61,7 @@ SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* restrict fi
     SDL_GPUShader* shader = SDL_CreateGPUShader(con->dev, &info);
 
     if (!shader)
-        SDL_Log("Failed to create shader");
+        SDL_Log("ERROR: Failed to create shader");
 
     SDL_free(code);
 
@@ -78,7 +78,7 @@ SDL_Surface* renderLoadBmp(context_t* restrict con, const char* restrict filenam
     surf = SDL_LoadBMP(path);
 
     if (!surf) {
-        SDL_Log("Failed to load BMP: %s", SDL_GetError());
+        SDL_Log("ERROR: Failed to load BMP: %s", SDL_GetError());
         return NULL;
     }
 
@@ -90,26 +90,26 @@ SDL_GPUTextureFormat renderInitWindow(context_t* restrict con, SDL_WindowFlags f
     con->dev = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL, 0, NULL);
 
     if (!con->dev) {
-        SDL_Log("Failed to create GPU device");
+        SDL_Log("ERROR: Failed to create GPU device");
         return SDL_GPU_TEXTUREFORMAT_INVALID;
     }
 
     con->window = SDL_CreateWindow(con->name, con->width, con->height, flags);
 
     if (!con->window) {
-        SDL_Log("Failed to create window");
+        SDL_Log("ERROR: Failed to create window");
         return SDL_GPU_TEXTUREFORMAT_INVALID;
     }
 
     if (!SDL_ClaimWindowForGPUDevice(con->dev, con->window)) {
-        SDL_Log("Failed to claim window for GPU device");
+        SDL_Log("ERROR: Failed to claim window for GPU device");
         return SDL_GPU_TEXTUREFORMAT_INVALID;
     }
 
     renderBufLock = SDL_CreateMutex();
 
     if (!renderBufLock) {
-        SDL_Log("Failed to create render buf lock");
+        SDL_Log("ERROR: Failed to create render buf lock");
         return SDL_GPU_TEXTUREFORMAT_INVALID;
     }
 
@@ -130,7 +130,7 @@ SDL_GPUTextureFormat renderInitWindow(context_t* restrict con, SDL_WindowFlags f
 SDL_GPUGraphicsPipeline* renderInit2DPipeline(SDL_GPUDevice* restrict dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt)
 {
     if (!dev || !vert || !frag) {
-        SDL_Log("Init 2D pipeline null ref");
+        SDL_Log("ERROR: Init 2D pipeline null ref");
         return NULL;
     }
 
@@ -162,7 +162,7 @@ SDL_GPUGraphicsPipeline* renderInit2DPipeline(SDL_GPUDevice* restrict dev, SDL_G
 SDL_GPUGraphicsPipeline* renderInitBoxPipeline(SDL_GPUDevice* restrict dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt)
 {
     if (!dev || !vert || !frag) {
-        SDL_Log("Init box pipeline null ref");
+        SDL_Log("ERROR: Init box pipeline null ref");
         return NULL;
     }
 
@@ -209,7 +209,7 @@ SDL_GPUTexture* renderInitAsciiTexture(context_t* restrict con, const char* rest
     SDL_Surface* img = renderLoadBmp(con, filename);
 
     if (!img) {
-        SDL_Log("Failed to load image");
+        SDL_Log("ERROR: Failed to load image");
         return NULL;
     }
 
@@ -241,7 +241,7 @@ SDL_GPUTexture* renderInitAsciiTexture(context_t* restrict con, const char* rest
     );
 
     if (!tex) {
-        SDL_Log("Failed to create GPU texture");
+        SDL_Log("ERROR: Failed to create GPU texture");
         return NULL;
     }
 
@@ -258,7 +258,7 @@ SDL_GPUTexture* renderInitAsciiTexture(context_t* restrict con, const char* rest
     );
 
     if (!smp) {
-        SDL_Log("Failed to create GPU sampler");
+        SDL_Log("ERROR: Failed to create GPU sampler");
         return NULL;
     }
 

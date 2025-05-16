@@ -2,6 +2,7 @@
 #include <SDL3/SDL.h>
 
 #include <input.h>
+#include <worldsim.h>
 #include <render/renderer.h>
 #include <debug/rdebug.h>
 
@@ -22,31 +23,30 @@ static SDL_GPUTextureFormat rfmt;
 
 SDL_Mutex* renderBufLock = NULL;
 
-// game objects
-static gameobj_t objectbuf[ASCII2D_OBJ_BUF_SIZE];
-static u32 objidx;
-static u32 objfragmented;
+static gameobj_t* objectbuf;
 
-// ascii chars
-static asciidata_t charbuf[ASCII2D_BUF_SIZE];
-static u32 numchars;
-static const asciidata_t* charbound = charbuf + ASCII2D_BUF_SIZE;
+static u32 num2Dchars;
+static u32 numlayerchars;
+static u32 numobjects;
+
+static u8 renderbuf[ASCII_OBJ_BUF_SIZE];
+
+// layers
+static u8 layerobjects[RENDER_MAX_LAYERS * RENDER_OBJ_PER_LAYER];
+static renderlayer_t layers[RENDER_MAX_LAYERS];
+
+static u32 indices[RENDER_MAX_LAYERS];
+static f32 scales[RENDER_MAX_LAYERS] = {0.4f, 0.6f, 0.8f, 1.0f, 1.2f, 1.2f};
 
 // hitboxes
 static gameobj_t* hitboxes[RENDER_HITBOX_BUF_SIZE];
 static u32 numboxes;
 
-// layers
-static gameobj_t* layerobjects[RENDER_MAX_LAYERS * RENDER_OBJ_PER_LAYER];
-static renderlayer_t layers[RENDER_MAX_LAYERS];
-static u32 indices[RENDER_MAX_LAYERS];
-static f32 scales[RENDER_MAX_LAYERS] = {0.4f, 0.6f, 0.8f, 1.0f, 1.2f, 1.2f}; 
-
-static u32 rmode = RENDER_MODE_LAYERED;
+static u32 rmode = RENDER_MODE_UNDEF;
 
 static instate_t* input;
 
-void renderInit(context_t* restrict con, SDL_WindowFlags flags)
+void renderInit(context_t* restrict con, SDL_WindowFlags flags, u32 mode)
 {
     // init window
     rfmt = renderInitWindow(con, flags);
@@ -78,12 +78,15 @@ void renderInit(context_t* restrict con, SDL_WindowFlags flags)
     SDL_ReleaseGPUShader(con->dev, vert);
     SDL_ReleaseGPUShader(con->dev, frag);
 
+    if (!pipeline2D || !pipelineHitbox || !pipelineLayers || !asciitex)
+        return;
+
     // init buffers
     asciitransferbuf = SDL_CreateGPUTransferBuffer(
         con->dev,
         &(SDL_GPUTransferBufferCreateInfo) {
             .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-            .size = ASCII2D_BUF_SIZE * sizeof(asciidata_t)
+            .size = ASCII_CHAR_BUF_SIZE * sizeof(asciidata_t)
         }
     );
 
@@ -93,7 +96,7 @@ void renderInit(context_t* restrict con, SDL_WindowFlags flags)
         con->dev,
         &(SDL_GPUBufferCreateInfo) {
             .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-            .size = ASCII2D_BUF_SIZE * sizeof(asciidata_t)
+            .size = ASCII_CHAR_BUF_SIZE * sizeof(asciidata_t)
         }
     );
 
@@ -125,6 +128,10 @@ void renderInit(context_t* restrict con, SDL_WindowFlags flags)
     }
 
     input = getInputState();
+
+    objectbuf = getObjectBuf();
+
+    rmode = mode;
 }
 
 static inline void draw2D(SDL_GPURenderPass* restrict renderpass)
@@ -133,7 +140,7 @@ static inline void draw2D(SDL_GPURenderPass* restrict renderpass)
     SDL_BindGPUVertexStorageBuffers(renderpass, 0, &asciigpubuf, 1);
     SDL_BindGPUFragmentSamplers(renderpass, 0, &(SDL_GPUTextureSamplerBinding) { .texture = asciitex, .sampler = sampler }, 1);
 
-    SDL_DrawGPUPrimitives(renderpass, numchars * 6, 1, 0, 0);
+    SDL_DrawGPUPrimitives(renderpass, num2Dchars * 6, 1, 0, 0);
 }
 
 static inline void drawLayers(SDL_GPURenderPass* restrict renderpass, SDL_GPUCommandBuffer* restrict cmdbuf)
@@ -178,7 +185,7 @@ static inline void drawLayers(SDL_GPURenderPass* restrict renderpass, SDL_GPUCom
     data[1] = input->screen_dy * scales[5];
     data[2] = scales[5];
     SDL_PushGPUVertexUniformData(cmdbuf, 0, data, 32);
-    SDL_DrawGPUPrimitives(renderpass, (numchars - indices[5]) * 6, 1, indices[5] * 6, 0);
+    SDL_DrawGPUPrimitives(renderpass, (numlayerchars - indices[5]) * 6, 1, indices[5] * 6, 0);
 }
 
 static inline void drawBoxes(SDL_GPURenderPass* restrict renderpass)
@@ -191,13 +198,24 @@ static inline void drawBoxes(SDL_GPURenderPass* restrict renderpass)
 
 static inline void transferAsciiBuf(SDL_GPUCopyPass* restrict copypass, SDL_GPUDevice* restrict dev)
 {
-    rAssert(numchars < ASCII2D_BUF_SIZE);
-
     asciidata_t* transfmem = SDL_MapGPUTransferBuffer(dev, asciitransferbuf, true);
 
+    num2Dchars = 0;
+
     SDL_LockMutex(renderBufLock);
-    memcpy(transfmem, charbuf, sizeof(asciidata_t) * numchars);
+
+    for (u32 i = 0; i < numobjects; i++) {
+        if (!objectbuf[renderbuf[i]].visible)
+            continue;
+
+        memcpy(transfmem + num2Dchars, objectbuf[renderbuf[i]].data, sizeof(asciidata_t) * objectbuf[renderbuf[i]].len);
+
+        num2Dchars += objectbuf[renderbuf[i]].len;
+    }
+
     SDL_UnlockMutex(renderBufLock);
+
+    rAssert(num2Dchars < ASCII_CHAR_BUF_SIZE);
 
     SDL_UnmapGPUTransferBuffer(dev, asciitransferbuf);
 
@@ -210,7 +228,7 @@ static inline void transferAsciiBuf(SDL_GPUCopyPass* restrict copypass, SDL_GPUD
         &(SDL_GPUBufferRegion) {
             .buffer = asciigpubuf,
             .offset = 0,
-            .size = numchars * sizeof(asciidata_t)
+            .size = num2Dchars * sizeof(asciidata_t)
         },
         true
     );
@@ -218,27 +236,31 @@ static inline void transferAsciiBuf(SDL_GPUCopyPass* restrict copypass, SDL_GPUD
 
 static inline void transferLayerBuf(SDL_GPUCopyPass* restrict copypass, SDL_GPUDevice* restrict dev)
 {
-    rAssert(numchars < ASCII2D_BUF_SIZE);
-
     asciidata_t* transfmem = SDL_MapGPUTransferBuffer(dev, asciitransferbuf, true);
 
     memset(indices, 0, sizeof(indices));
-    numchars = 0;
+    numlayerchars = 0;
 
     SDL_LockMutex(renderBufLock);
 
     for (u32 i = 0; i < RENDER_MAX_LAYERS; i++)
     {
-        indices[i] = numchars;
+        indices[i] = numlayerchars;
 
-        for (gameobj_t** k = layers[i].objects; k < layers[i].objects + layers[i].numobjects; k++)
+        for (u32 k = 0; k < layers[i].numobjects; k++)
         {
-            memcpy(transfmem + numchars, (*k)->data, sizeof(asciidata_t) * (*k)->len);
-            numchars += (*k)->len;
+            if (!objectbuf[layers[i].objects[k]].visible)
+                continue;
+
+            memcpy(transfmem + numlayerchars, objectbuf[layers[i].objects[k]].data, sizeof(asciidata_t) * objectbuf[layers[i].objects[k]].len);
+            
+            numlayerchars += objectbuf[layers[i].objects[k]].len;
         }
     }
 
     SDL_UnlockMutex(renderBufLock);
+
+    rAssert(numlayerchars < ASCII_CHAR_BUF_SIZE);
 
     SDL_UnmapGPUTransferBuffer(dev, asciitransferbuf);
 
@@ -251,7 +273,7 @@ static inline void transferLayerBuf(SDL_GPUCopyPass* restrict copypass, SDL_GPUD
         &(SDL_GPUBufferRegion) {
             .buffer = asciigpubuf,
             .offset = 0,
-            .size = numchars * sizeof(asciidata_t)
+            .size = numlayerchars * sizeof(asciidata_t)
         },
         true
     );
@@ -300,16 +322,16 @@ void renderDraw(context_t* restrict con)
     SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(con->dev);
 
     if (!cmdbuf) {
-        SDL_Log("Failed to acquire copy cmd buf: %s", SDL_GetError());
+        SDL_Log("ERROR: Failed to acquire copy cmd buf: %s", SDL_GetError());
         return;
     }
 
     // copy pass
     SDL_GPUCopyPass* copypass = SDL_BeginGPUCopyPass(cmdbuf);
 
-    if (numchars && rmode == RENDER_MODE_2D)
+    if (rmode == RENDER_MODE_2D)
         transferAsciiBuf(copypass, con->dev);
-    else if (numchars && rmode == RENDER_MODE_LAYERED)
+    else if (rmode == RENDER_MODE_LAYERED)
         transferLayerBuf(copypass, con->dev);
 
     if (numboxes)
@@ -323,14 +345,14 @@ void renderDraw(context_t* restrict con)
     cmdbuf = SDL_AcquireGPUCommandBuffer(con->dev);
 
     if (!cmdbuf) {
-        SDL_Log("Failed to acquire render cmd buf: %s", SDL_GetError());
+        SDL_Log("ERROR: Failed to acquire render cmd buf: %s", SDL_GetError());
         return;
     }
 
     SDL_GPUTexture* swapchain;
 
     if (!SDL_WaitAndAcquireGPUSwapchainTexture(cmdbuf, con->window, &swapchain, NULL, NULL)) {
-        SDL_Log("Failed to acquire swapchain texture: %s", SDL_GetError());
+        SDL_Log("ERROR: Failed to acquire swapchain texture: %s", SDL_GetError());
         return;
     }
 
@@ -353,17 +375,32 @@ void renderDraw(context_t* restrict con)
         NULL
     );
 
-    if (numchars && rmode == RENDER_MODE_2D)
+    if (rmode == RENDER_MODE_2D)
         draw2D(renderpass);
-    else if (numchars && rmode == RENDER_MODE_LAYERED)
+    else if (rmode == RENDER_MODE_LAYERED)
         drawLayers(renderpass, cmdbuf);
 
-    if (numboxes)
+    if (rmode & RENDER_MODE_HITBOXES && numboxes)
         drawBoxes(renderpass);
 
     SDL_EndGPURenderPass(renderpass);
 
     SDL_SubmitGPUCommandBuffer(cmdbuf);
+}
+
+u32 getRenderMode(void)
+{
+    return rmode;
+}
+
+void renderMode(u32 mode)
+{
+    rmode = mode;
+}
+
+void renderToggleHitboxes(void)
+{
+    rmode ^= RENDER_MODE_HITBOXES;
 }
 
 void renderCleanup(context_t* restrict con)
@@ -387,11 +424,20 @@ void renderCleanup(context_t* restrict con)
 //
 //  worldsim
 //
-
-void addObjectToLayer(gameobj_t* object, u32 layer)
+void addObjectToRenderBuf(u32 object)
 {
-    if (!object || layer >= RENDER_MAX_LAYERS || layers[layer].numobjects >= RENDER_OBJ_PER_LAYER) {
-        SDL_Log("Failed to add object to layer");
+    if (object >= ASCII_OBJ_BUF_SIZE || numobjects >= ASCII_OBJ_BUF_SIZE) {
+        SDL_Log("ERROR: Failed to add object to render buf");
+        return;
+    }
+
+    renderbuf[numobjects++] = object;
+}
+
+void addObjectToLayer(u32 object, u32 layer)
+{
+    if (object >= ASCII_OBJ_BUF_SIZE || layer >= RENDER_MAX_LAYERS || layers[layer].numobjects >= RENDER_OBJ_PER_LAYER) {
+        SDL_Log("ERROR: Failed to add object to layer");
         return;
     }
 
@@ -408,13 +454,13 @@ void addHitbox(gameobj_t* object)
         }
     }
 
-    SDL_Log("Failed to add hitbox, buffer full");
+    SDL_Log("ERROR: Failed to add hitbox, buffer full");
 }
 
 void removeHitbox(gameobj_t* object)
 {
     if (!numboxes) {
-        SDL_Log("Failed to remove hitbox, no hitboxes in buf");
+        SDL_Log("ERROR: Failed to remove hitbox, no hitboxes in buf");
         return;
     }
 
@@ -426,9 +472,23 @@ void removeHitbox(gameobj_t* object)
         }
     }
 
-    SDL_Log("Failed to remove hitbox, object has no hitbox");
+    SDL_Log("ERROR: Failed to remove hitbox, object has no hitbox");
 }
 
+void resetRenderBuffers(void)
+{
+    num2Dchars = 0;
+    numlayerchars = 0;
+    numobjects = 0;
+
+    for (renderlayer_t* i = layers; i < layers + RENDER_MAX_LAYERS; i++)
+        i->numobjects = 0;
+}
+
+//
+//
+//
+/*
 void handleCollision(void)
 {
     rAssert(bird);
@@ -447,93 +507,7 @@ void handleCollision(void)
         }
     }
 }
-
-
-gameobj_t* addGameObject(const ascii2info_t* info, u32 len, f32 x, f32 y)
-{
-    rAssert(info);
-    rAssert(len);
-
-    if (numchars + len >= ASCII2D_BUF_SIZE) {
-        SDL_Log("ERROR: Ascii buffer full");
-        return NULL;
-    }
-
-    gameobj_t* obj = NULL;
-
-    if (objfragmented)
-    {
-        for (u32 i = 0; i < ASCII2D_OBJ_BUF_SIZE; i++) {
-            if (!objectbuf[i].data) {
-                obj = objectbuf + i;
-                break;
-            }
-        }
-
-        if (!obj) {
-            SDL_Log("ERROR: Object buffer full");
-            return NULL;
-        }
-    }
-    else if (objidx >= ASCII2D_OBJ_BUF_SIZE)
-    {
-        SDL_Log("ERROR: Object buffer full");
-        return NULL;
-    }
-    else
-    {
-        obj = objectbuf + objidx++;
-    }
-
-    rAssert(obj);
-
-    obj->data = charbuf + numchars;
-    obj->len = len;
-    obj->xscale = 0.0f;
-    obj->yscale = 0.0f;
-    obj->dx = 0.0f;
-    obj->dy = 0.0f;
-    obj->x = x;
-    obj->y = y;
-
-    numchars += len;
-
-    for (asciidata_t* i = obj->data; i < obj->data + len; i++, info++) {
-        i->r = (f32) ((u8) (info->color >> 24)) / 255.0f;
-        i->g = (f32) ((u8) (info->color >> 16)) / 255.0f;
-        i->b = (f32) ((u8) (info->color >> 8)) / 255.0f;
-        i->a = (f32) ((u8) info->color) / 255.0f;
-        i->scale = 1.0f / 80.0f;
-        i->x = info->pos.x + x;
-        i->y = info->pos.y + y;
-        
-        if (info->charID < 32)
-            i->charID = 0;
-        else
-            i->charID = info->charID - 32;
-    }
-
-    SDL_Log("INFO: Successfully allocated ascii object of length %ld", obj->len);
-
-    return obj;
-}
-
-gameobj_t* addGameObjectStruct(const objectinfo_t* restrict object)
-{
-    rAssert(object);
-    rAssert(object->len);
-    rAssert(object->data);
-
-    gameobj_t* obj = addGameObject(object->data, object->len, object->x, object->y);
-
-    if (!obj)
-        return NULL;
-
-    obj->xscale = object->xscale;
-    obj->yscale = object->yscale;
-
-    return obj;
-}
+*/
 
 void moveGameObject(const gameobj_t* restrict obj, f32 dx, f32 dy)
 {
@@ -548,6 +522,7 @@ void moveGameObject(const gameobj_t* restrict obj, f32 dx, f32 dy)
     }
 }
 
+/*
 void updateGameObjectPos(gameobj_t* restrict obj)
 {
     rAssert(obj && obj->len && obj->data);
@@ -565,59 +540,4 @@ void updateGameObjectPos(gameobj_t* restrict obj)
     obj->dx = 0.0f;
     obj->dy = 0.0f;
 }
-
-void removeGameObject(gameobj_t* restrict obj)
-{
-    if (!obj || !obj->len || obj->data)
-        return;
-
-    if (obj < objectbuf || obj >= objectbuf + ASCII2D_OBJ_BUF_SIZE) {
-        SDL_Log("ERROR: could not remove game object, pointer outside of object bounds");
-        return;
-    }
-
-    rAssert(obj->len <= numchars);
-    rAssert(obj->data + obj->len <= charbound && obj->data >= charbuf);
-
-    if (obj->data + obj->len == charbound) {
-        objidx = obj + 1 - objectbuf;
-        objfragmented = 0;
-    }
-
-    if (!objfragmented)
-    {
-        for (gameobj_t* i = objectbuf; i < objectbuf + objidx; i++) {
-            if (i == obj)
-                continue;
-
-            if (i->data && obj->data < i->data) {
-                objfragmented = 1;
-                break;
-            }
-        }
-
-        if (!objfragmented) {
-            numchars -= obj->len;
-            obj->data = NULL;
-            obj->len = 0;
-            objidx--;
-            return;
-        }
-    }
-
-    // defragment
-    memmove(obj->data, obj->data + obj->len, sizeof(asciidata_t) * ((obj->data + obj->len) - charbound));
-
-    numchars -= obj->len;
-    obj->data = NULL;
-    obj->len = 0;
-}
-
-void resetAllGameObjects(void)
-{
-    numchars = 0;
-    objidx = 0;
-    objfragmented = 0;
-
-    memset(objectbuf, 0, sizeof(gameobj_t) * ASCII2D_OBJ_BUF_SIZE);
-}
+    */
