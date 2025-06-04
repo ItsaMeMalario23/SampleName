@@ -1,18 +1,25 @@
-#ifndef RENDERER_H
-#define RENDERER_H
+#ifndef RENDER_H
+#define RENDER_H
 
 #include <main.h>
+#include <render/camera.h>
 
 // render modes
-#define RENDER_MODE_UNDEF           (0)
+#define RENDER_MODE_UNDEF           (0u)
 #define RENDER_MODE_2D              (1u << 0)
-#define RENDER_MODE_LAYERED         (1u << 1)
-#define RENDER_MODE_HITBOXES        (1u << 2)
+#define RENDER_MODE_3D              (1u << 1)
+#define RENDER_MODE_LAYERED         (1u << 2)
+#define RENDER_MODE_ODYSSEY         (1u << 3)
+#define RENDER_MODE_HITBOXES        (1u << 4)
 
 #define RENDER_MODE_2D_HYBRID       (RENDER_MODE_2D | RENDER_MODE_LAYERED)
+#define RENDER_MODE_3D_HYBRID       (RENDER_MODE_2D | RENDER_MODE_3D)
 
 // max hitbox elements
 #define RENDER_HITBOX_BUF_SIZE      8
+
+// max renderable 3D objects
+#define RENDER_OBJ3D_BUF_SIZE       32
 
 #define RENDER_MAX_LAYERS           6
 #define RENDER_OBJ_PER_LAYER        8
@@ -26,15 +33,6 @@
 //
 //  Typedefs
 //
-typedef struct context_s {
-    const char*     name;
-    const char*     path;
-    SDL_Window*     window;
-    SDL_GPUDevice*  dev;
-    u32             width;
-    u32             height;
-} context_t;
-
 typedef struct renderlayer_s {
     u8*         objects;
     u32         numobjects;
@@ -50,37 +48,34 @@ SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* restrict fi
 SDL_Surface* renderLoadBmp(context_t* restrict con, const char* restrict filename);
 
 SDL_GPUTextureFormat renderInitWindow(context_t* restrict con, SDL_WindowFlags flags);
-SDL_GPUGraphicsPipeline* renderInit2DPipeline(SDL_GPUDevice* restrict dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
-SDL_GPUGraphicsPipeline* renderInitBoxPipeline(SDL_GPUDevice* restrict dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
+SDL_GPUGraphicsPipeline* renderInit2DPipeline(SDL_GPUDevice* dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
+SDL_GPUGraphicsPipeline* renderInitBoxPipeline(SDL_GPUDevice* dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
+SDL_GPUGraphicsPipeline* renderInit3DPipeline(SDL_GPUDevice* dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
+SDL_GPUGraphicsPipeline* renderInitOdysseyPipeline(SDL_GPUDevice* dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
 SDL_GPUTexture* renderInitAsciiTexture(context_t* restrict con, const char* restrict filename, SDL_GPUSampler** restrict sampler);
+SDL_GPUTexture* renderInitOdysseyTexture(context_t* con, SDL_GPUSampler** restrict sampler, SDL_GPUTextureFormat rfmt);
 
 void renderCleanupWindow(context_t* restrict con);
 
 //
 //  Render
 //
-void renderInit(context_t* restrict con, SDL_WindowFlags flags, u32 mode);
-void renderDraw(context_t* restrict con);
-u32  getRenderMode(void);
+u32       getRenderMode(void);
+camera_t* getCamera(void);
+
+void renderInit(context_t* const con, SDL_WindowFlags flags, u32 mode);
+void renderDraw(context_t* const con);
 void renderMode(u32 mode);
 void renderToggleHitboxes(void);
-void renderCleanup(context_t* restrict con);
+void renderCleanup(context_t* const con);
 
+//  Objects
+void setup3DVtxBuf(obj3D_t* objects, u32 numobjects);
+void add3DObjectToRenderBuf(const obj3D_t* restrict object);
 void addObjectToRenderBuf(u32 object);
 void addObjectToLayer(u32 object, u32 layer);
 void addHitbox(gameobj_t* object);
 void removeHitbox(gameobj_t* object);
 void resetRenderBuffers(void);
-
-//
-//  Worldsim
-//
-void handleCollision(void);
-//gameobj_t* addGameObject(const ascii2info_t* info, u32 len, f32 x, f32 y);
-//gameobj_t* addGameObjectStruct(const objectinfo_t* restrict object);
-//void moveGameObject(const gameobj_t* restrict obj, f32 dx, f32 dy);
-//void updateGameObjectPos(gameobj_t* restrict obj);
-void removeGameObject(gameobj_t* restrict obj);
-void resetAllGameObjects(void);
 
 #endif

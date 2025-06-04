@@ -3,7 +3,7 @@
 
 #include <objects.h>
 #include <input.h>
-#include <render/renderer.h>
+#include <render/render.h>
 
 //
 //  Object char data
@@ -102,6 +102,56 @@ const ascii2info_t terraindata[14] = {
     {'I', 0x0b8003ff, {0.2968750f, 0.0861111f}}, {'N', 0x0b8003ff, {0.3234375f, 0.0972222f}},
 };
 
+const ascii2info_t mariodata[49] = {
+    {'c', 0xcf2611ff, {0.0062500f, 0.2305555f}}, {'o', 0xcf2611ff, {0.0546875f, 0.2305555f}}, {'=', 0xcf2611ff, {0.0312500f, 0.2194444f}}, {'-', 0xcf2611ff, {0.0750000f, 0.2138889f}},
+    {'-', 0xcf2611ff, {0.0296875f, 0.2361111f}}, {'\'', 0xffffffff, {0.0593750f, 0.1805556f}}, {'T', 0x685d00ff, {0.0156250f, 0.1861111f}}, {'[', 0x685d00ff, {-0.0062500f, 0.1861111f}},
+    {'e', 0x685d00ff, {0.0078125f, 0.1500000f}}, {'~', 0x685d00ff, {0.0718750f, 0.1555556f}}, {'-', 0x685d00ff, {0.0562500f, 0.1472222f}}, {',', 0xea9e22ff, {0.0734375f, 0.1944444f}},
+    {'.', 0xea9e22ff, {0.0718750f, 0.2138889f}}, {'K', 0xea9e22ff, {0.0359375f, 0.1472222f}}, {'-', 0xea9e22ff, {0.0562500f, 0.1361111f}}, {'$', 0xea9e22ff, {0.0390625f, 0.1888889f}},
+    {'\'', 0xea9e22ff, {0.0078125f, 0.1722222f}}, {',', 0xea9e22ff, {0.0578125f, 0.1805556f}}, {'|', 0xcf2611ff, {0.0140625f, 0.1027778f}}, {'|', 0xcf2611ff, {0.0484375f, 0.1027778f}},
+    {'A', 0xcf2611ff, {0.0156250f, 0.0611111f}}, {'A', 0xcf2611ff, {0.0500000f, 0.0611111f}}, {'|', 0xcf2611ff, {0.0312500f, 0.0611111f}}, {'/', 0xcf2611ff, {0.0203125f, 0.0166667f}},
+    {'\\', 0xcf2611ff, {0.0453125f, 0.0166667f}}, {'o', 0x685d00ff, {-0.0046875f, -0.0055556f}}, {'o', 0x685d00ff, {0.0718750f, -0.0055556f}}, {'\'', 0x685d00ff, {0.0125000f, -0.0250000f}},
+    {'\'', 0x685d00ff, {0.0578125f, -0.0250000f}}, {'M', 0x685d00ff, {0.0328125f, 0.1027778f}}, {'R', 0xea9e22ff, {0.0750000f, 0.0638889f}}, {'R', 0xea9e22ff, {-0.0093750f, 0.0638889f}},
+    {'/', 0x685d00ff, {-0.0046875f, 0.1083333f}}, {'\\', 0x685d00ff, {0.0687500f, 0.1083333f}}, {'.', 0xea9e22ff, {0.0171875f, 0.0777778f}}, {'.', 0xea9e22ff, {0.0515625f, 0.0777778f}},
+    {'^', 0x685d00ff, {0.0015625f, 0.0805556f}}, {'^', 0x685d00ff, {0.0625000f, 0.0805556f}}, {'.', 0x685d00ff, {0.0593750f, 0.1222222f}}, {'.', 0x685d00ff, {0.0078125f, 0.1222222f}},
+    {'<', 0xcf2611ff, {0.0046875f, 0.0166667f}}, {'>', 0xcf2611ff, {0.0609375f, 0.0166667f}}, {'.', 0xcf2611ff, {-0.0015625f, 0.0222222f}}, {'.', 0xcf2611ff, {0.0703125f, 0.0222222f}},
+    {',', 0xcf2611ff, {0.0187500f, 0.0444444f}}, {'.', 0xcf2611ff, {0.0500000f, 0.0444444f}}, {'.', 0xcf2611ff, {0.0546875f, 0.0305556f}}, {'.', 0xcf2611ff, {0.0671875f, 0.0444444f}},
+    {'.', 0xcf2611ff, {0.0015625f, 0.0444444f}},
+};
+
+const ascii2info_t brickdata[66] = {
+    {'=', 0x381c01ff, {0.0015625f, 0.1777778f}}, {'\'', 0xd0c0bff, {0.0203125f, 0.1666666f}}, {'=', 0x381c01ff, {0.0375000f, 0.1777778f}}, {'=', 0x381c01ff, {0.0625000f, 0.1777778f}},
+    {'\'', 0xd0c0bff, {0.0812500f, 0.1666666f}}, {'=', 0x381c01ff, {0.0984375f, 0.1777778f}}, {'\'', 0xd0c0bff, {-0.0046875f, 0.1333333f}}, {'=', 0x381c01ff, {0.0125000f, 0.1444444f}},
+    {'=', 0x381c01ff, {0.0375000f, 0.1444444f}}, {'\'', 0xd0c0bff, {0.0562500f, 0.1333333f}}, {'=', 0x381c01ff, {0.0734375f, 0.1444444f}}, {'=', 0x381c01ff, {0.0984375f, 0.1444444f}},
+    {'_', 0xd0c0bff, {0.0015625f, 0.1833333f}}, {'_', 0xd0c0bff, {0.0265625f, 0.1833333f}}, {'-', 0xd0c0bff, {0.0484375f, 0.1611111f}}, {'_', 0xd0c0bff, {0.0734375f, 0.1833333f}},
+    {'_', 0xd0c0bff, {0.0984375f, 0.1833333f}}, {'_', 0xd0c0bff, {0.0015625f, 0.1500000f}}, {'_', 0xd0c0bff, {0.0265625f, 0.1500000f}}, {'-', 0xd0c0bff, {0.0484375f, 0.1277778f}},
+    {'_', 0xd0c0bff, {0.0734375f, 0.1500000f}}, {'_', 0xd0c0bff, {0.0984375f, 0.1500000f}}, {'=', 0x381c01ff, {0.0015625f, 0.1111111f}}, {'=', 0x381c01ff, {0.0375000f, 0.1111111f}},
+    {'=', 0x381c01ff, {0.0625000f, 0.1111111f}}, {'=', 0x381c01ff, {0.0984375f, 0.1111111f}}, {'\'', 0xd0c0bff, {0.0203125f, 0.1000000f}}, {'\'', 0xd0c0bff, {0.0812500f, 0.1000000f}},
+    {'_', 0xd0c0bff, {0.0015625f, 0.1166666f}}, {'_', 0xd0c0bff, {0.0265625f, 0.1166666f}}, {'_', 0xd0c0bff, {0.0734375f, 0.1166666f}}, {'_', 0xd0c0bff, {0.0984375f, 0.1166666f}},
+    {'-', 0xd0c0bff, {0.0484375f, 0.0944444f}}, {'=', 0x381c01ff, {0.0125000f, 0.0777778f}}, {'=', 0x381c01ff, {0.0375000f, 0.0777778f}}, {'=', 0x381c01ff, {0.0734375f, 0.0777778f}},
+    {'=', 0x381c01ff, {0.0984375f, 0.0777778f}}, {'\'', 0xd0c0bff, {0.0562500f, 0.0666666f}}, {'\'', 0xd0c0bff, {-0.0046875f, 0.0666666f}}, {'_', 0xd0c0bff, {0.0015625f, 0.0833333f}},
+    {'_', 0xd0c0bff, {0.0265625f, 0.0833333f}}, {'_', 0xd0c0bff, {0.0734375f, 0.0833333f}}, {'_', 0xd0c0bff, {0.0984375f, 0.0833333f}}, {'-', 0xd0c0bff, {0.0484375f, 0.0611111f}},
+    {'=', 0x381c01ff, {0.0015625f, 0.0416666f}}, {'=', 0x381c01ff, {0.0375000f, 0.0416666f}}, {'=', 0x381c01ff, {0.0625000f, 0.0416666f}}, {'=', 0x381c01ff, {0.0984375f, 0.0416666f}},
+    {'\'', 0xd0c0bff, {0.0203125f, 0.0305555f}}, {'\'', 0xd0c0bff, {0.0812500f, 0.0305555f}}, {'_', 0xd0c0bff, {0.0015625f, 0.0472222f}}, {'_', 0xd0c0bff, {0.0265625f, 0.0472222f}},
+    {'_', 0xd0c0bff, {0.0734375f, 0.0472222f}}, {'_', 0xd0c0bff, {0.0984375f, 0.0472222f}}, {'-', 0xd0c0bff, {0.0484375f, 0.0250000f}}, {'=', 0x381c01ff, {0.0125000f, 0.0083333f}},
+    {'=', 0x381c01ff, {0.0375000f, 0.0083333f}}, {'=', 0x381c01ff, {0.0734375f, 0.0083333f}}, {'=', 0x381c01ff, {0.0984375f, 0.0083333f}}, {'\'', 0xd0c0bff, {-0.0046875f, -0.0027778f}},
+    {'\'', 0xd0c0bff, {0.0562500f, -0.0027778f}}, {'_', 0xd0c0bff, {0.0015625f, 0.0138888f}}, {'_', 0xd0c0bff, {0.0265625f, 0.0138888f}}, {'_', 0xd0c0bff, {0.0734375f, 0.0138888f}},
+    {'_', 0xd0c0bff, {0.0984375f, 0.0138888f}}, {'-', 0xd0c0bff, {0.0484375f, -0.0083334f}},
+};
+
+const ascii2info_t qblockdata[44] = {
+    {'+', 0xea9e22ff, {0.0093750f, 0.1583333f}}, {'+', 0xea9e22ff, {0.0906250f, 0.1583333f}}, {'+', 0xea9e22ff, {0.0906250f, 0.0083333f}}, {'+', 0xea9e22ff, {0.0093750f, 0.0083333f}},
+    {'_', 0xe0c0aff, {0.0031250f, 0.0055555f}}, {'_', 0xe0c0aff, {0.0265625f, 0.0055555f}}, {'_', 0xe0c0aff, {0.0515625f, 0.0055555f}}, {'_', 0xe0c0aff, {0.0765625f, 0.0055555f}},
+    {'_', 0xe0c0aff, {0.1000000f, 0.0055555f}}, {'_', 0x733400ff, {0.0031250f, 0.2055555f}}, {'_', 0x733400ff, {0.0265625f, 0.2055555f}}, {'_', 0x733400ff, {0.0515625f, 0.2055555f}},
+    {'_', 0x733400ff, {0.0765625f, 0.2055555f}}, {'_', 0x733400ff, {0.1000000f, 0.2055555f}}, {'|', 0x733400ff, {-0.0062500f, 0.0111111f}}, {'|', 0x733400ff, {-0.0062500f, 0.0583333f}},
+    {'|', 0x733400ff, {-0.0062500f, 0.1083333f}}, {'|', 0x733400ff, {-0.0062500f, 0.1555556f}}, {'|', 0xe0c0aff, {0.1046875f, 0.1555556f}}, {'|', 0xe0c0aff, {0.1046875f, 0.1083333f}},
+    {'|', 0xe0c0aff, {0.1046875f, 0.0583333f}}, {'|', 0xe0c0aff, {0.1046875f, 0.0111111f}}, {'?', 0x733400ff, {0.0312500f, 0.1277778f}}, {'?', 0x733400ff, {0.0515625f, 0.1444445f}},
+    {'?', 0x733400ff, {0.0687500f, 0.0833334f}}, {'?', 0x733400ff, {0.0515625f, 0.0583334f}}, {'*', 0x733400ff, {0.0515625f, 0.0083333f}}, {'?', 0x733400ff, {0.0718750f, 0.1277778f}},
+    {'+', 0xea9e22ff, {0.0296875f, 0.0083333f}}, {'+', 0xea9e22ff, {0.0703125f, 0.0083333f}}, {'+', 0xea9e22ff, {0.0296875f, 0.0833334f}}, {'+', 0xea9e22ff, {0.0093750f, 0.0444445f}},
+    {'+', 0xea9e22ff, {0.0703125f, 0.0444445f}}, {'+', 0xea9e22ff, {0.0906250f, 0.0444445f}}, {'+', 0xea9e22ff, {0.0296875f, 0.0444445f}}, {'+', 0xea9e22ff, {0.0906250f, 0.1222223f}},
+    {'+', 0xea9e22ff, {0.0093750f, 0.0833334f}}, {'+', 0xea9e22ff, {0.0906250f, 0.0833334f}}, {'+', 0xea9e22ff, {0.0093750f, 0.1222223f}}, {'+', 0xea9e22ff, {0.0484375f, 0.1055556f}},
+    {'+', 0xea9e22ff, {0.0296875f, 0.1638889f}}, {'+', 0xea9e22ff, {0.0703125f, 0.1638889f}}, {'-', 0xea9e22ff, {0.0500000f, 0.1722222f}}, {'-', 0xea9e22ff, {0.0500000f, 0.0305556f}},
+};
+
 //
 //  Animation callbacks
 //
@@ -147,8 +197,8 @@ static void animateBird(gameobj_t* restrict bird)
 //
 //  Scenes
 //
-const sceneinfo_t scene1 = {
-    .kbmapping = setStdKBMapping,
+const sceneinfo_t scene_bird = {
+    .kbmapping = set2DLayerInputMap,
     .rendermode = RENDER_MODE_LAYERED,
     .flags = SCENE_RENDER_ALL,
     .player_x = 0.7f,
@@ -260,4 +310,145 @@ const sceneinfo_t scene1 = {
         .y = 1.0f
     }},
     .layers = (i8[16]) { 3, 3, 4, 0, 1, 2, 3, 1, 1, 2, 2, 3, 3, 4, 4, 5 }
+};
+
+const sceneinfo_t scene_mario = {
+    .kbmapping = setStdInputMap,
+    .flags = SCENE_RENDER_ALL | SCENE_NO_RENDERMODE | SCENE_PLAYER_HITBOX,
+    .player_x = 1.0f,
+    .player_y = 1.0f,
+    .player = &(objectinfo_t) {
+        .data = mariodata,
+        .len = sizeof(mariodata) / sizeof(ascii2info_t),
+        .xscale = 0.094f,
+        .yscale = 0.25f
+    },
+    .numobjects = 6,
+    .objects = (objectinfo_t[]) {{
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 0.1f,
+        .y = 0.2f
+    }, {
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 0.227f,
+        .y = 0.2f
+    }, {
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 0.354f,
+        .y = 0.2f
+    }, {
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 0.481f,
+        .y = 0.2f
+    }, {
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 0.608f,
+        .y = 0.2f
+    }, {
+        .data = qblockdata,
+        .len = sizeof(qblockdata) / sizeof(ascii2info_t),
+        .x = 0.481,
+        .y = 0.8f
+    }}
+};
+
+//
+//  3D Objects
+//
+static const vec3f_t pyramid_vtx[18] = {
+    {-1, 0, -1, 0xea9e22ff}, {1, 0, -1, 0xea9e22ff}, {-1, 0, 1, 0xea9e22ff},
+    {1, 0, 1, 0xea9e22ff}, {-1, 0, 1, 0xea9e22ff}, {1, 0, -1, 0xea9e22ff},
+    {-1, 0, -1, 0xea9e22ff}, {-1, 0, 1, 0xea9e22ff}, {0, 1, 0, 0xFFFFFFFF},
+    {-1, 0, -1, 0xea9e22ff}, {0, 1, 0, 0xFFFFFFFF}, {1, 0, -1, 0xea9e22ff},
+    {1, 0, 1, 0xea9e22ff}, {0, 1, 0, 0xFFFFFFFF}, {-1, 0, 1, 0xea9e22ff},
+    {1, 0, 1, 0xea9e22ff}, {1, 0, -1, 0xea9e22ff}, {0, 1, 0, 0xFFFFFFFF}
+};
+
+static obj3D_t pyramid_obj = {
+    .numvtx = sizeof(pyramid_vtx) / sizeof(vec3f_t),
+    .vtxbuf = pyramid_vtx,
+    .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER
+};
+
+obj3D_t* pyramid_3D = &pyramid_obj;
+
+//
+
+static const vec3f_t terrain_vtx[24] = {
+    {-8, 0, -8, 0xea9e22ff}, {-8, 0, -7, 0xea9e22ff}, {-7, 0, -8, 0xea9e22ff},
+    {-7, 0, -7, 0xea9e22ff}, {-7, 0, -8, 0xea9e22ff}, {-8, 0, -7, 0xea9e22ff},
+
+    {-7, 0, -7, 0xea9e22ff}, {-7, 0, -6, 0xea9e22ff}, {-6, 0, -7, 0xea9e22ff},
+    {-6, 0, -6, 0xea9e22ff}, {-6, 0, -7, 0xea9e22ff}, {-7, 0, -6, 0xea9e22ff},
+
+    {-6, 0, -6, 0xea9e22ff}, {-6, 0, -5, 0xea9e22ff}, {-5, 0, -6, 0xea9e22ff},
+    {-5, 0, -5, 0xea9e22ff}, {-5, 0, -6, 0xea9e22ff}, {-6, 0, -5, 0xea9e22ff},
+
+    {-5, 0, -5, 0xea9e22ff}, {-5, 0, -4, 0xea9e22ff}, {-4, 0, -5, 0xea9e22ff},
+    {-4, 0, -4, 0xea9e22ff}, {-4, 0, -5, 0xea9e22ff}, {-5, 0, -4, 0xea9e22ff},
+};
+
+static obj3D_t terrain_obj = {
+    .numvtx = sizeof(terrain_vtx) / sizeof(vec3f_t),
+    .vtxbuf = terrain_vtx,
+    .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER
+};
+
+obj3D_t* terrain_3D = &terrain_obj;
+
+//
+
+static const vec3f_t wall_vtx[6] = {
+    {0, 0, 0, 0}, {1.92f, 0, 0, 1}, {1.92f, 1.08f, 0, 2},
+    {0, 0, 0, 0}, {1.92f, 1.08f, 0, 2}, {0, 1.08f, 0, 3}
+};
+
+static obj3D_t wall_obj = {
+    .numvtx = sizeof(wall_vtx) / sizeof(vec3f_t),
+    .vtxbuf = wall_vtx,
+    .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER,
+    .pos = {-4.0f, 0, -4.0f}
+};
+
+obj3D_t* wall_3D = &wall_obj;
+
+//
+
+static const vec3f_t player_vtx[6] = {
+    {0, 0, 0}, {0.1f, 0, 0}, {0.1f, 0.5f, 0},
+    {0, 0, 0}, {0.1f, 0.5f, 0}, {0, 0.5f, 0}
+};
+
+static obj3D_t player_obj = {
+    .numvtx = sizeof(player_vtx) / sizeof(vec3f_t),
+    .vtxbuf = player_vtx,
+    .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER,
+    .pos = {0, 0, 2.0f}
+};
+
+// array
+obj3D_t objects3D[] = {{
+        .numvtx = sizeof(terrain_vtx) / sizeof(vec3f_t),
+        .vtxbuf = terrain_vtx,
+        .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER
+    }, {
+        .numvtx = sizeof(wall_vtx) / sizeof(vec3f_t),
+        .vtxbuf = wall_vtx,
+        .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER,
+        .pos = {-4.0f, 0, -4.0f}
+    }, {
+        .numvtx = sizeof(pyramid_vtx) / sizeof(vec3f_t),
+        .vtxbuf = pyramid_vtx,
+        .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER
+    }, {
+        .numvtx = sizeof(player_vtx) / sizeof(vec3f_t),
+        .vtxbuf = player_vtx,
+        .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER,
+        .pos = {0, 0, 2.0f}
+    }
 };

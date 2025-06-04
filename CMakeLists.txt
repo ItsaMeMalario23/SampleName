@@ -15,7 +15,11 @@ PRIVATE
     src/animation.c
     src/worldsim.c
     src/render/render_utils.c
-    src/render/renderer.c
+    src/render/render.c
+    src/render/camera.c
+    src/levels/lvl_bird.c
+    src/levels/lvl_mario.c
+    src/levels/lvl_odyssey.c
     src/debug/rdebug.c
     src/debug/memtrack.c
 )

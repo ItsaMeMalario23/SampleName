@@ -2,7 +2,7 @@
 
 #include <animation.h>
 #include <objects.h>
-#include <render/renderer.h>
+#include <render/render.h>
 #include <debug/rdebug.h>
 #include <debug/memtrack.h>
 
@@ -28,7 +28,7 @@ static animation_t* getAnimMem(gameobj_t* restrict obj, u32 frames, u32 flags)
     rAssert(obj->data);
 
     if (!lock) {
-        SDL_Log("Failed to add animation, animation buf lock null ref");
+        SDL_Log("[ERROR] Failed to add animation, animation buf lock null ref");
         return NULL;
     }
 
@@ -45,7 +45,7 @@ static animation_t* getAnimMem(gameobj_t* restrict obj, u32 frames, u32 flags)
         }
     }
 
-    SDL_Log("Failed to add animation, animation buf full");
+    SDL_Log("[ERROR] Failed to add animation, animation buf full");
 
     return NULL;
 }
@@ -204,7 +204,7 @@ static int animationThread(void* restrict ptr)
             }
             else
             {
-                SDL_Log("Invalid animation type");
+                SDL_Log("[ERROR] Invalid animation type");
             }
         }
 
@@ -212,7 +212,7 @@ static int animationThread(void* restrict ptr)
         SDL_UnlockMutex(lock);
     }
 
-    SDL_Log("Animation thread terminated");
+    SDL_Log("[INFO] Animation thread terminated");
 
     return 0;
 }
@@ -284,7 +284,7 @@ void queueAnimation(animation_t* restrict anim, i32 numcycles, u32 start)
     rAssert(anim->type == ANIM_TYPE_STATIC || anim->type == ANIM_TYPE_CALLBACK);
 
     if (numqueued >= ANIM_QUEUE_SIZE) {
-        SDL_Log("Failed to queue animation, queue full");
+        SDL_Log("[ERROR] Failed to queue animation, queue full");
         return;
     }
 
@@ -316,6 +316,19 @@ void queueAnimation(animation_t* restrict anim, i32 numcycles, u32 start)
     SDL_UnlockMutex(qlock);
 }
 
+void resetAnimationQueue(void)
+{
+    numqueued = 0;
+
+    for (const animation_t* i = animbuf; i < animbuf + ANIM_STO_BUF_SIZE; i++) {
+        if (i->stdpos)
+            memFree(i->stdpos);
+    }
+
+    memset(animbuf, 0, sizeof(animbuf));
+    memset(animqueue, 0, sizeof(animqueue));
+}
+
 void initAnimationThread(void)
 {
     stop = 0;
@@ -324,7 +337,7 @@ void initAnimationThread(void)
     qlock = SDL_CreateMutex();
 
     if (!lock) {
-        SDL_Log("Failed to create animation buf mutex");
+        SDL_Log("[ERROR] Failed to create animation buf mutex");
         return;
     }
 
@@ -333,16 +346,18 @@ void initAnimationThread(void)
     thread = SDL_CreateThread(animationThread, "animation thread", NULL);
 
     if (!thread)
-        SDL_Log("Failed to create animation thread");
+        SDL_Log("[ERROR] Failed to create animation thread");
 
     SDL_DetachThread(thread);
 
-    SDL_Log("Animation thread started");
+    SDL_Log("[INFO] Animation thread started");
 }
 
 void cleanupAnimationThread(void)
 {
     stop = 1;
+
+    resetAnimationQueue();
 
     SDL_DestroyMutex(lock);
     SDL_DestroyMutex(qlock);

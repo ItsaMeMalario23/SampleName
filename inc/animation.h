@@ -52,6 +52,7 @@ animation_t* addStaticAnimation(gameobj_t* restrict obj, const animframe_t* rest
 animation_t* addCallbackAnimation(gameobj_t* restrict obj, animate_f animation, u32 ticks, u32 flags);
 
 void queueAnimation(animation_t* restrict anim, i32 numcycles, u32 start);
+void resetAnimationQueue(void);
 
 void initAnimationThread(void);
 void cleanupAnimationThread(void);

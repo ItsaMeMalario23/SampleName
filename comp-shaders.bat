@@ -19,3 +19,19 @@ shadercross "resources/shaders/src/box.frag.hlsl" -o "resources/shaders/comp/DXI
 shadercross "resources/shaders/src/asciiLayers.vert.hlsl" -o "resources/shaders/comp/SPV/asciiLayers.vert.spv"
 shadercross "resources/shaders/src/asciiLayers.vert.hlsl" -o "resources/shaders/comp/MSL/asciiLayers.vert.msl"
 shadercross "resources/shaders/src/asciiLayers.vert.hlsl" -o "resources/shaders/comp/DXIL/asciiLayers.vert.dxil"
+
+shadercross "resources/shaders/src/test3D.vert.hlsl" -o "resources/shaders/comp/SPV/test3D.vert.spv"
+shadercross "resources/shaders/src/test3D.vert.hlsl" -o "resources/shaders/comp/MSL/test3D.vert.msl"
+shadercross "resources/shaders/src/test3D.vert.hlsl" -o "resources/shaders/comp/DXIL/test3D.vert.dxil"
+
+shadercross "resources/shaders/src/test3D.frag.hlsl" -o "resources/shaders/comp/SPV/test3D.frag.spv"
+shadercross "resources/shaders/src/test3D.frag.hlsl" -o "resources/shaders/comp/MSL/test3D.frag.msl"
+shadercross "resources/shaders/src/test3D.frag.hlsl" -o "resources/shaders/comp/DXIL/test3D.frag.dxil"
+
+shadercross "resources/shaders/src/odyssey.vert.hlsl" -o "resources/shaders/comp/SPV/odyssey.vert.spv"
+shadercross "resources/shaders/src/odyssey.vert.hlsl" -o "resources/shaders/comp/MSL/odyssey.vert.msl"
+shadercross "resources/shaders/src/odyssey.vert.hlsl" -o "resources/shaders/comp/DXIL/odyssey.vert.dxil"
+
+shadercross "resources/shaders/src/odyssey.frag.hlsl" -o "resources/shaders/comp/SPV/odyssey.frag.spv"
+shadercross "resources/shaders/src/odyssey.frag.hlsl" -o "resources/shaders/comp/MSL/odyssey.frag.msl"
+shadercross "resources/shaders/src/odyssey.frag.hlsl" -o "resources/shaders/comp/DXIL/odyssey.frag.dxil"

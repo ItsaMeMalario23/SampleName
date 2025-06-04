@@ -1,5 +1,6 @@
 #include <worldsim.h>
-#include <render/renderer.h>
+#include <levels.h>
+#include <render/render.h>
 #include <debug/rdebug.h>
 
 static asciidata_t charbuf[ASCII_CHAR_BUF_SIZE];
@@ -11,26 +12,41 @@ static const gameobj_t* objbound = objbuf + ASCII_OBJ_BUF_SIZE;
 static u32 numchars;
 static u32 numobjects;
 
-static gameobj_t* player;
-
-static instate_t* input;
+static level_t* currentlvl;
+static u32 currentlvlid;
 
 //
-//  Local functions
+//  Public functions
 //
-static i32 addGameObject(const objectinfo_t* restrict info, bool render)
+gameobj_t* getObjectBuf(void)
+{
+    return objbuf;
+}
+
+gameobj_t* getObject(u32 id)
+{
+    if (id >= numobjects) {
+        SDL_Log("[ERROR] Get object id out of bounds");
+        return NULL;
+    }
+
+    return objbuf + id;
+}
+
+// allocate and init 2D ascii object
+i32 initGameObject(const objectinfo_t* info, bool render)
 {
     rAssert(info);
     rAssert(info->len);
     rAssert(info->data);
 
     if (objbuf + numobjects >= objbound) {
-        SDL_Log("ERROR: Failed to add game object, object buffer full");
+        SDL_Log("[ERROR] Failed to add game object, object buffer full");
         return -1;
     }
 
     if (charbuf + info->len >= charbound) {
-        SDL_Log("ERROR: Failed to add game object, char buffer full");
+        SDL_Log("[ERROR] Failed to add game object, char buffer full");
         return -1;
     }
 
@@ -70,79 +86,63 @@ static i32 addGameObject(const objectinfo_t* restrict info, bool render)
             i->charID = dat->charID - 32;
     }
 
-    SDL_Log("INFO: Allocated object of length %ld", obj->len);
+    SDL_Log("[INFO] Allocated object of length %ld", obj->len);
 
     return numobjects++;
 }
 
-static inline void updateObjectPosition(gameobj_t* restrict object)
-{
-    rAssert(object);
-
-    for (asciidata_t* i = object->data; i < object->data + object->len; i++) {
-        i->x += object->dx;
-        i->y += object->dy;
-    }
-
-    object->x += object->dx;
-    object->y += object->dy;
-    object->dx = 0.0f;
-    object->dy = 0.0f;
-}
-
-//
-//  Public functions
-//
-gameobj_t* getObjectBuf(void)
-{
-    return objbuf;
-}
-
-gameobj_t* getObject(u32 id)
-{
-    if (id >= numobjects) {
-        SDL_Log("ERROR: Get object id out of bounds");
-        return NULL;
-    }
-
-    return objbuf + id;
-}
-
-void loadScene(const sceneinfo_t* restrict scene)
+// should only be called by level implementations
+void loadScene(const sceneinfo_t* scene, gameobj_t** restrict player)
 {
     rAssert(scene);
-    rAssert(scene->kbmapping);
+    rAssert(scene->kbmapping || scene->flags & SCENE_NO_INPUT_MAP);
     rAssert(scene->player);
     rAssert(!scene->numobjects || scene->objects);
-    rAssert(!(scene->rendermode & RENDER_MODE_LAYERED) || scene->layers);
+    rAssert((!(scene->rendermode & RENDER_MODE_LAYERED) || scene->layers) || scene->flags & SCENE_NO_RENDERMODE);
 
     resetScene();
     resetRenderBuffers();
 
-    if (!input)
-        input = getInputState();
+    resetAnimationQueue();
+
+    if (!(scene->flags & SCENE_NO_RENDERMODE))
+        renderMode(scene->rendermode);
+
+    if (!(scene->flags & SCENE_NO_INPUT_MAP))
+        scene->kbmapping();
 
     // add player object
-    if (addGameObject(scene->player, scene->flags & SCENE_RENDER_ALL) < 0)
+    if (initGameObject(scene->player, scene->flags & SCENE_RENDER_ALL) < 0)
         return;
 
-    player = objbuf;
-    player->dx = scene->player_x;
-    player->dy = scene->player_y;
+    gameobj_t* playerobj = objbuf;
+
+    for (asciidata_t* i = playerobj->data; i < playerobj->data + playerobj->len; i++) {
+        i->x += scene->player_x;
+        i->y += scene->player_y;
+    }
+
+    playerobj->dx = 0.0f;
+    playerobj->dy = 0.0f;
+    playerobj->x = scene->player_x;
+    playerobj->y = scene->player_y;
+
+    if (scene->flags & SCENE_PLAYER_HITBOX)
+        addHitbox(playerobj);
 
     // add player animations
     for (const animinfo_t* i = scene->player->animations; i < scene->player->animations + scene->player->numanimations; i++) {
         if (i->type == ANIM_TYPE_STATIC)
-            addStaticAnimation(player, i->staticf, i->numframes, i->flags);
+            addStaticAnimation(playerobj, i->staticf, i->numframes, i->flags);
         else if (i->type == ANIM_TYPE_CALLBACK)
-            addCallbackAnimation(player, i->callback, i->ticks, i->flags);
+            addCallbackAnimation(playerobj, i->callback, i->ticks, i->flags);
         else
-            SDL_Log("ERROR: Invalid animation type in scene: %d", i->type);
+            SDL_Log("[ERROR] Invalid animation type in scene: %d", i->type);
     }
 
     // add other objects
     for (const objectinfo_t* i = scene->objects; i < scene->objects + scene->numobjects; i++) {
-        i32 id = addGameObject(i, scene->flags & SCENE_RENDER_ALL);
+        i32 id = initGameObject(i, scene->flags & SCENE_RENDER_ALL);
 
         if (id < 0)
             return;
@@ -154,7 +154,7 @@ void loadScene(const sceneinfo_t* restrict scene)
             else if (k->type == ANIM_TYPE_CALLBACK)
                 addCallbackAnimation(objbuf + id, k->callback, k->ticks, k->flags);
             else
-                SDL_Log("ERROR: Invalid animation type in scene: %d", k->type);
+                SDL_Log("[ERROR] Invalid animation type in scene: %d", k->type);
         }
     }
 
@@ -171,47 +171,78 @@ void loadScene(const sceneinfo_t* restrict scene)
             addObjectToLayer(0, scene->layers[scene->numobjects]);
     }
 
-    renderMode(scene->rendermode);
-
-    scene->kbmapping();
+    *player = playerobj;
 }
 
 void resetScene(void)
 {
-    player = NULL;
     numobjects = 0;
     numchars = 0;
 
     memset(objbuf, 0, sizeof(objbuf));
 }
 
-void movePlayer(f64 dt)
+u32 startLevel(u32 levelid)
 {
-    rAssert(player);
-    rAssert(input);
+    if (currentlvl)
+        currentlvl->exit();
 
-    if (input->up)
-        player->dy += MOVE_PLAYER_Y * dt;
+    currentlvlid = levelid;
 
-    if (input->down)
-        player->dy -= MOVE_PLAYER_Y * dt;
+    switch (levelid) {
+    case LVL_ID_BIRD:
+        currentlvl = &lvl_bird;
+        break;
 
-    if (input->left) {
-        input->screen_dx += MOVE_SCREEN_X * dt;
-        player->dx -= MOVE_PLAYER_X * dt;
+    case LVL_ID_MARIO:
+        currentlvl = &lvl_mario;
+        break;
+
+    case LVL_ID_ODYSSEY:
+        currentlvl = &lvl_odyssey;
+        break;
+
+    default:
+        SDL_Log("[ERROR] Invalid level ID");
+        return 1;
     }
 
-    if (input->right) {
-        input->screen_dx -= MOVE_SCREEN_X * dt;
-        player->dx += MOVE_PLAYER_X * dt;
+    renderMode(currentlvl->rendermode);
+
+    currentlvl->init(NULL);     // TODO check retval
+
+    return 0;
+}
+
+static inline u32 getNextLevel(u32 levelid, u32 exitid)
+{
+    switch (levelid) {
+    case LVL_ID_BIRD:
+        return LVL_ID_MARIO;
+
+    case LVL_ID_MARIO:
+        return LVL_ID_ODYSSEY;
+
+    case LVL_ID_ODYSSEY:
+        return LVL_ID_BIRD;
     }
 
-    rAssert(player->animation);
+    return 0xffffffff;
+}
 
-    if (fnotzero(player->dx) || fnotzero(player->dy)) {
-        player->animation->numcycles = ANIM_REPEAT;
-        updateObjectPosition(player);
-    } else {
-        player->animation->numcycles = ANIM_TERMINATE;
+u32 gameUpdate(f64 dt)
+{
+    rAssert(currentlvl);
+    rAssert(currentlvl->update);
+
+    u32 ret;
+    
+    if (ret = currentlvl->update(dt)) {
+        if (startLevel(getNextLevel(currentlvlid, ret)))
+            return 1;
+
+        return 0;
     }
+
+    return 0;
 }

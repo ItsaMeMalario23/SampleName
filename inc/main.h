@@ -16,14 +16,6 @@
 
 #define EPSILON         (0.0000001f)
 
-#define BIRD_X_SCALE    (0.1f)
-#define BIRD_Y_SCALE    (0.13333333f)
-
-#define CHERRY_X_SCALE  (0.06f)
-#define CHERRY_Y_SCALE  (0.10f)
-
-#define FLAG_Y_OFFSET   (0.006f)
-
 typedef int8_t i8;
 typedef uint8_t u8;
 
@@ -41,6 +33,15 @@ typedef double f64;
 
 typedef struct animation_s animation_t;
 
+typedef struct context_s {
+    const char*     name;
+    const char*     path;
+    SDL_Window*     window;
+    SDL_GPUDevice*  dev;
+    u32             width;
+    u32             height;
+} context_t;
+
 typedef struct vec2f_s {
     f32 x;
     f32 y;
@@ -52,13 +53,6 @@ typedef struct vec3f_s {
     f32 z;
     u32 pad;    /* padding for 64-bit alignment */
 } vec3f_t;
-
-typedef struct mat4_s {
-    f32 m11, m12, m13, m14;
-    f32 m21, m22, m23, m24;
-    f32 m31, m32, m33, m34;
-    f32 m41, m42, m43, m44;
-} mat4_t;
 
 typedef struct asciidata_s {
     f32 r, g, b, a;
@@ -84,5 +78,7 @@ typedef struct gameobj_s {
 extern u32 f_int3;
 
 static inline bool fnotzero(f32 f) { return f > EPSILON || f < -EPSILON; }
+
+context_t* getContext(void);
 
 #endif

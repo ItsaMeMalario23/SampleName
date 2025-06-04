@@ -8,12 +8,14 @@
 #define ASCII_CHAR_BUF_SIZE     4096
 #define ASCII_OBJ_BUF_SIZE      128
 
-#define SCENE_RENDER_ALL        (1u << 0)       /* only has effect on non-layered objects */
+#define SCENE_RENDER_ALL        (1u << 0)           /* only has effect on non-layered objects */
+#define SCENE_NO_INPUT_MAP      (1u << 1)
+#define SCENE_NO_RENDERMODE     (1u << 2)
+#define SCENE_PLAYER_HITBOX     (1u << 3)
 
-#define MOVE_PLAYER_X           (0.144)
-#define MOVE_PLAYER_Y           (0.256)
-#define MOVE_SCREEN_X           (0.144)
-#define MOVE_SCREEN_Y           (0.256)
+#define LVL_ID_BIRD             (0u)
+#define LVL_ID_MARIO            (1u)
+#define LVL_ID_ODYSSEY          (2u)
 
 typedef struct ascii2info_s {
     u32     charID;
@@ -58,9 +60,12 @@ typedef struct sceneinfo_s {
 gameobj_t* getObjectBuf(void);
 gameobj_t* getObject(u32 id);
 
-void loadScene(const sceneinfo_t* restrict scene);
+i32 initGameObject(const objectinfo_t* info, bool render);
+
+void loadScene(const sceneinfo_t* scene, gameobj_t** restrict player);
 void resetScene(void);
 
-void movePlayer(f64 dt);
+u32 startLevel(u32 levelid);
+u32 gameUpdate(f64 dt);
 
 #endif
