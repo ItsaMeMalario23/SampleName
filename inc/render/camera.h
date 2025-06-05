@@ -13,6 +13,8 @@ typedef struct mat4_s {
     f32 m41, m42, m43, m44;
 } mat4_t;
 
+#define CAM_THIRD_PERS_OFFS (-0.8f)
+
 #define CAMERA_NEED_REBUILD (1u << 0)
 #define CAMERA_THIRD_PERSON (1u << 1)
 

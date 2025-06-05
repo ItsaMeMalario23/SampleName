@@ -407,7 +407,7 @@ static inline void drawOdyssey(SDL_GPUCommandBuffer* cmdbuf, SDL_GPUTexture* swa
             .cycle = false,
             .load_op = SDL_GPU_LOADOP_CLEAR,
             .store_op = SDL_GPU_STOREOP_STORE,
-            .clear_color = (SDL_FColor) { 0, 0, 0, 1 }
+            .clear_color = (SDL_FColor) { 0.1f, 0.1f, 0.1f, 1.0f }
         },
         1,
         NULL

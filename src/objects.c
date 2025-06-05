@@ -323,7 +323,7 @@ const sceneinfo_t scene_mario = {
         .xscale = 0.094f,
         .yscale = 0.25f
     },
-    .numobjects = 6,
+    .numobjects = 14,
     .objects = (objectinfo_t[]) {{
         .data = brickdata,
         .len = sizeof(brickdata) / sizeof(ascii2info_t),
@@ -348,6 +348,46 @@ const sceneinfo_t scene_mario = {
         .data = brickdata,
         .len = sizeof(brickdata) / sizeof(ascii2info_t),
         .x = 0.608f,
+        .y = 0.2f
+    }, {
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 0.735,
+        .y = 0.2f
+    }, {
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 0.862f,
+        .y = 0.2f
+    }, {
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 0.989f,
+        .y = 0.2f
+    }, {
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 1.116f,
+        .y = 0.2f
+    }, {
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 1.243f,
+        .y = 0.2f
+    }, {
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 1.370f,
+        .y = 0.2f
+    }, {
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 1.497f,
+        .y = 0.2f
+    }, {
+        .data = brickdata,
+        .len = sizeof(brickdata) / sizeof(ascii2info_t),
+        .x = 1.624f,
         .y = 0.2f
     }, {
         .data = qblockdata,
@@ -404,8 +444,8 @@ obj3D_t* terrain_3D = &terrain_obj;
 //
 
 static const vec3f_t wall_vtx[6] = {
-    {0, 0, 0, 0}, {1.92f, 0, 0, 1}, {1.92f, 1.08f, 0, 2},
-    {0, 0, 0, 0}, {1.92f, 1.08f, 0, 2}, {0, 1.08f, 0, 3}
+    {0, 0, 0, 0x191919ff}, {1.92f, 0, 0, 0x201919ff}, {1.92f, 1.08f, 0, 0x211919ff},
+    {0, 0, 0, 0x191919ff}, {1.92f, 1.08f, 0, 0x211919ff}, {0, 1.08f, 0, 0x221919ff}
 };
 
 static obj3D_t wall_obj = {
@@ -419,9 +459,11 @@ obj3D_t* wall_3D = &wall_obj;
 
 //
 
-static const vec3f_t player_vtx[6] = {
-    {0, 0, 0}, {0.1f, 0, 0}, {0.1f, 0.5f, 0},
-    {0, 0, 0}, {0.1f, 0.5f, 0}, {0, 0.5f, 0}
+static const vec3f_t player_vtx[12] = {
+    {0, 0, 0}, {0.06f, 0, 0}, {0.06f, 0.5f, 0},
+    {0, 0, 0}, {0.06f, 0.5f, 0}, {0, 0.5f, 0},
+    {0, 0, 0}, {0.06f, 0.5f, 0}, {0.06f, 0, 0},
+    {0, 0, 0}, {0, 0.5f, 0}, {0.06f, 0.5f, 0}
 };
 
 static obj3D_t player_obj = {

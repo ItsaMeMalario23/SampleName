@@ -77,7 +77,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
     input = getInputState();
     mouse = getMouse();
 
-    if (startLevel(LVL_ID_BIRD)) {
+    if (startLevel(LVL_ID_ODYSSEY)) {
         SDL_Log("[ERROR] Failed to start level");
         return SDL_APP_FAILURE;
     }

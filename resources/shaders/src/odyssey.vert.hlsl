@@ -26,11 +26,11 @@ ret main(arg a)
 
     r.pos = mul(rendermatrix, mul(modeltransform, float4(a.pos, 1.0f)));
 
-    if (a.corner == 0)
+    if (a.corner == 0x191919ff)
         r.texcoord = float2(0.0f, 1.0f);
-    else if (a.corner == 1)
+    else if (a.corner == 0x201919ff)
         r.texcoord = float2(1.0f, 1.0f);
-    else if (a.corner == 2)
+    else if (a.corner == 0x211919ff)
         r.texcoord = float2(1.0f, 0.0f);
     else
         r.texcoord = float2(0.0f, 0.0f);

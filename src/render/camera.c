@@ -109,6 +109,23 @@ void cameraInit(camera_t* const camera)
     cameraUpdate(camera);
 }
 
+static inline void thirdPers(camera_t* camera)
+{
+    camera->rendermat = (mat4_t) { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -camera->pos.x, -camera->pos.y, -camera->pos.z, 1 };
+
+    camera->proj = rotIntrRad(0.0f, radf(camera->yaw), radf(camera->pitch));
+
+    mul(&camera->view, &camera->rendermat, &camera->proj);
+
+    mat4_t m;
+
+    mul(&m, &camera->view, &(mat4_t) {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, CAM_THIRD_PERS_OFFS, 1});
+
+    camera->proj = perspective(camera->fov, camera->aspect, camera->nearplane, camera->farplane);
+
+    mul(&camera->rendermat, &m, &camera->proj);
+}
+
 void cameraUpdate(camera_t* const camera)
 {
     rAssert(camera);
@@ -116,14 +133,17 @@ void cameraUpdate(camera_t* const camera)
     if (!(camera->flags & CAMERA_NEED_REBUILD))
         return;
 
+    if (camera->flags & CAMERA_THIRD_PERSON) {
+        thirdPers(camera);
+        camera->flags &= ~CAMERA_NEED_REBUILD;
+        return;
+    }
+
     camera->rendermat = (mat4_t) { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -camera->pos.x, -camera->pos.y, -camera->pos.z, 1 };
 
     camera->proj = rotIntrRad(0.0f, radf(camera->yaw), radf(camera->pitch));
 
     mul(&camera->view, &camera->rendermat, &camera->proj);
-
-    if (camera->flags & CAMERA_THIRD_PERSON)
-        thirdPersOffset(camera, radf(camera->yaw), radf(camera->pitch));
 
     camera->proj = perspective(camera->fov, camera->aspect, camera->nearplane, camera->farplane);
 

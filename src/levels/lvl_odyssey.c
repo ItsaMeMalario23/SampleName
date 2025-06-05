@@ -27,9 +27,9 @@ static void initOdyssey(void)
 
     lvl_mario.init(NULL);
 
-    setup3DVtxBuf(objects3D, 3);
+    setup3DVtxBuf(objects3D, 4);
 
-    objects3D[1].flags &= ~OBJECT_VISIBLE;
+    objects3D[1].flags &= ~OBJECT_VISIBLE;  // wall
 
     objectUpdate(wall_3D);
 
@@ -44,13 +44,37 @@ static void exitOdyssey(void)
 
     renderMode(RENDER_MODE_3D);
 
-    setup3DVtxBuf(objects3D, 3);
+    setup3DVtxBuf(objects3D, 4);
 
-    objects3D[1].flags |= OBJECT_VISIBLE;
+    objects3D[1].flags |= OBJECT_VISIBLE;   // wall
 
     set3DInputMap();
 
     mouse->mode = 0;
+}
+
+static inline u32 handleInput(void)
+{
+    switch (input->dynamic) {
+    case 1:
+        input->dynamic = 0;
+        return LEVEL_EXIT_1;
+
+    case 2:
+        input->dynamic = 0;
+        initOdyssey();
+        return LEVEL_CONTINUE;
+
+    case 3:
+        input->dynamic = 0;
+        camera->flags ^= CAMERA_THIRD_PERSON;
+        camera->flags |= CAMERA_NEED_REBUILD;
+        objects3D[3].flags ^= OBJECT_VISIBLE;   // player
+        setObjectPosition(objects3D + 3, camera->pos.x, 0.0f, camera->pos.z);
+        return LEVEL_CONTINUE;
+    }
+    
+    return LEVEL_CONTINUE;
 }
 
 // mouse input callback
@@ -85,6 +109,8 @@ static u32 init(void* restrict data)
 
     setup3DVtxBuf(objects3D, 4);
 
+    objects3D[3].flags &= ~OBJECT_VISIBLE;  // player
+
     return 0;
 }
 
@@ -93,10 +119,9 @@ static u32 init(void* restrict data)
 //
 static u32 update(f64 dt)
 {
+    // update mario level in odyssey mode
     if (odyssey) {
-        u32 ret = lvl_mario.update(dt);
-
-        if (ret == LEVEL_EXIT_1)
+        if (lvl_mario.update(dt) == LEVEL_EXIT_1)
             exitOdyssey();
 
         return LEVEL_CONTINUE;
@@ -120,28 +145,16 @@ static u32 update(f64 dt)
     if (fnotzero(dy) || fnotzero(dx)) {
         f32 s = SDL_sinf(radf(-camera->yaw));
         f32 c = SDL_cosf(radf(-camera->yaw));
-        setCameraPosition(camera, camera->pos.x + ((c * dx) + (-s * dy)), camera->pos.y, camera->pos.z + ((s * dx) + (c * dy)));
-    }
 
-    switch (input->dynamic) {
-    case 1:
-        input->dynamic = 0;
-        return LEVEL_EXIT_1;
+        setCameraPosition(camera, camera->pos.x + c * dx - s * dy, camera->pos.y, camera->pos.z + s * dx + c *dy);
 
-    case 2:
-        input->dynamic = 0;
-        initOdyssey();
-        break;
-
-    case 3:
-        input->dynamic = 0;
-        camera->flags ^= CAMERA_THIRD_PERSON;
-        break;
+        if (camera->flags & CAMERA_THIRD_PERSON)
+            setObjectPosition(objects3D + 3, camera->pos.x, 0.0f, camera->pos.z);
     }
 
     cameraUpdate(camera);
 
-    return LEVEL_CONTINUE;
+    return handleInput();
 }
 
 //

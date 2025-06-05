@@ -266,4 +266,8 @@ void rDebugPrintf(const char* fmt, ... )
     rDebugString_Implementation(0, string);
 }
 
+#else
+
+inline void rDebugPrintf(const char* fmt, ...) { }
+
 #endif
