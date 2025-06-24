@@ -46,6 +46,7 @@ void int3(void)
 {
     f_int3 = 1;
     SDL_Log(" INT3");
+    SDL_SetWindowRelativeMouseMode(context.window, false);
 }
 
 static instate_t* input;
@@ -65,9 +66,9 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 
     rSetDebugBreak(int3);
 
-    renderInit(&context, SDL_WINDOW_BORDERLESS, RENDER_MODE_3D);
+    renderInit(SDL_WINDOW_BORDERLESS, RENDER_MODE_3D);
 
-    if (getRenderMode() == RENDER_MODE_UNDEF) {
+    if (renderGetMode() == RENDER_MODE_UNDEF) {
         SDL_Log("[ERROR] Failed to initialize renderer");
         return SDL_APP_FAILURE;
     }
@@ -176,6 +177,6 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 //
 void SDL_AppQuit(void* appstate, SDL_AppResult result)
 {
-    renderCleanup(&context);
+    renderCleanup();
     cleanupAnimationThread();
 }

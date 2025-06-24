@@ -1,9 +1,15 @@
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <SDL3/SDL.h>
 
 #include <objects.h>
 #include <input.h>
 #include <render/render.h>
+#include <render/camera.h>
+#include <debug/rdebug.h>
+#include <debug/memtrack.h>
 
 //
 //  Object char data
@@ -482,7 +488,8 @@ obj3D_t objects3D[] = {{
         .numvtx = sizeof(wall_vtx) / sizeof(vec3f_t),
         .vtxbuf = wall_vtx,
         .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER,
-        .pos = {-4.0f, 0, -4.0f}
+        .pos = {-4.0f, 0, -4.0f},
+        .tag = TAG_WALL
     }, {
         .numvtx = sizeof(pyramid_vtx) / sizeof(vec3f_t),
         .vtxbuf = pyramid_vtx,
@@ -491,6 +498,133 @@ obj3D_t objects3D[] = {{
         .numvtx = sizeof(player_vtx) / sizeof(vec3f_t),
         .vtxbuf = player_vtx,
         .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER,
-        .pos = {0, 0, 2.0f}
+        .pos = {0, 0, 2.0f},
+        .tag = TAG_PLAYER
+    }, {
+        .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER | OBJECT_INCOMPLETE,
+        .pos = {3.0f, 0.5f, -6.0f},
+        .tag = TAG_JET
     }
 };
+
+obj3D_t* getObjectByTag3D(tag objtag)
+{
+    const obj3D_t* bound = objects3D + (sizeof(objects3D) / sizeof(obj3D_t));
+
+    for (obj3D_t* i = objects3D; i < bound; i++) {
+        if (i->tag == objtag)
+            return i;
+    }
+
+    SDL_Log("[ERROR] Could not find object with tag %ld", objtag);
+
+    return NULL;
+}
+
+static inline void winding(vec3f_t* triangle, vec3f_t normal)
+{
+    vec3f_t a = {triangle[1].x - triangle[0].x, triangle[1].y - triangle[0].y, triangle[1].z - triangle[0].z};
+    vec3f_t b = {triangle[2].x - triangle[0].x, triangle[2].y - triangle[0].y, triangle[2].z - triangle[0].z};
+
+    vec3f_t n = crossV3F(a, b);
+
+    if ((n.x > 0.0f && normal.x < 0.0f) || (n.x < 0.0f && normal.x > 0.0f))
+        goto swap;
+
+    if ((n.y > 0.0f && normal.y < 0.0f) || (n.y < 0.0f && normal.y > 0.0f))
+        goto swap;
+
+    if ((n.z > 0.0f && normal.z < 0.0f) || (n.z < 0.0f && normal.z > 0.0f))
+        goto swap;
+
+    return;
+
+    swap:
+
+    n = triangle[1];
+    triangle[1] = triangle[2];
+    triangle[2] = n;
+}
+
+vec3f_t* parseStl(const char* filename, u32* numvtx, u32 color)
+{
+    rAssert(filename);
+    rAssert(numvtx);
+
+    char buf[65535];
+
+    static context_t* context;
+
+    if (!context)
+        context = getContext();
+
+    rAssert(context->path);
+
+    snprintf(buf, 512, "%s..\\resources\\models\\%s.stl", context->path, filename);
+
+    FILE* fd = fopen(buf, "rb");
+
+    if (!fd || ferror(fd)) {
+        SDL_Log("[ERROR] Failed to parse STL: file open error");
+        fclose(fd);
+        return NULL;
+    }
+
+    size_t len = fread(buf, 1, 65535, fd);
+
+    if (!feof(fd)) {
+        SDL_Log("[ERROR] Failed to parse STL: file too big");
+        fclose(fd);
+        return NULL;
+    }
+
+    fclose(fd);
+
+    if (len < 100) {
+        SDL_Log("[ERROR] Failed to parse STL: file read error");
+        return NULL;
+    }
+
+    u32 num;
+
+    memcpy(&num, buf + 80, sizeof(u32));
+
+    rAssert(num);
+    rAssert(num < 4096);
+
+    *numvtx = num * 3;
+
+    vec3f_t* ret = (vec3f_t*) memAlloc(num * 3 * sizeof(vec3f_t));
+    vec3f_t* tmp = ret;
+
+    for (const char* i = buf + 84; i < buf + len && num; i += 50, tmp += 3, num--) {
+        rAssert(i + 48 < buf + len);
+
+        vec3f_t n;
+        memcpy(&n.x, i, sizeof(f32));
+        memcpy(&n.y, i + 4, sizeof(f32));
+        memcpy(&n.z, i + 8, sizeof(f32));
+
+        memcpy(&tmp[0].x, i + 12, sizeof(f32));
+        memcpy(&tmp[0].y, i + 16, sizeof(f32));
+        memcpy(&tmp[0].z, i + 20, sizeof(f32));
+
+        memcpy(&tmp[2].x, i + 24, sizeof(f32));
+        memcpy(&tmp[2].y, i + 28, sizeof(f32));
+        memcpy(&tmp[2].z, i + 32, sizeof(f32));
+
+        memcpy(&tmp[1].x, i + 36, sizeof(f32));
+        memcpy(&tmp[1].y, i + 40, sizeof(f32));
+        memcpy(&tmp[1].z, i + 44, sizeof(f32));
+
+        winding(tmp, n);
+
+        tmp[0].pad = color;
+        tmp[1].pad = color;
+        tmp[2].pad = color;
+    }
+
+    rAssert(!num);
+
+    return ret;
+}

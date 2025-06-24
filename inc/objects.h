@@ -16,10 +16,21 @@
 extern const sceneinfo_t scene_bird;
 extern const sceneinfo_t scene_mario;
 
+typedef enum tag_e {
+    TAG_UNDEF,
+    TAG_PLAYER,
+    TAG_WALL,
+    TAG_JET
+} tag;
+
 extern obj3D_t* pyramid_3D;
 extern obj3D_t* terrain_3D;
 extern obj3D_t* wall_3D;
 
 extern obj3D_t objects3D[];
+
+obj3D_t* getObjectByTag3D(tag objtag);
+
+vec3f_t* parseStl(const char* filename, u32* numvtx, u32 color);
 
 #endif

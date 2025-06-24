@@ -76,16 +76,21 @@ static inline mat4_t perspective(f32 fov, f32 aspect, f32 near, f32 far)
     };
 }
 
-static inline void thirdPersOffset(camera_t* camera, f32 yawRad, f32 pitchRad)
+static inline void thirdPers(camera_t* camera)
 {
-    f32 a = SDL_sinf(yawRad), b = SDL_cosf(yawRad);
-    f32 c = SDL_sinf(pitchRad), d = SDL_cosf(pitchRad);
+    camera->rendermat = (mat4_t) { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -camera->pos.x, -camera->pos.y, -camera->pos.z, 1 };
 
-    f32 x = 0.0f, y = 0.0f, z = -0.6f;
+    camera->proj = rotIntrRad(0.0f, radf(camera->yaw), radf(camera->pitch));
 
-    camera->view.m41 += b * x + a * c * y + a * d * z;
-    camera->view.m42 += d * y - c * z;
-    camera->view.m43 += b * c * y + b * d * z - a * x;
+    mul(&camera->view, &camera->rendermat, &camera->proj);
+
+    mat4_t m;
+
+    mul(&m, &camera->view, &(mat4_t) {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, CAM_THIRD_PERS_OFFS, 1});
+
+    camera->proj = perspective(camera->fov, camera->aspect, camera->nearplane, camera->farplane);
+
+    mul(&camera->rendermat, &m, &camera->proj);
 }
 
 //
@@ -107,23 +112,6 @@ void cameraInit(camera_t* const camera)
     camera->flags = CAMERA_NEED_REBUILD;
 
     cameraUpdate(camera);
-}
-
-static inline void thirdPers(camera_t* camera)
-{
-    camera->rendermat = (mat4_t) { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -camera->pos.x, -camera->pos.y, -camera->pos.z, 1 };
-
-    camera->proj = rotIntrRad(0.0f, radf(camera->yaw), radf(camera->pitch));
-
-    mul(&camera->view, &camera->rendermat, &camera->proj);
-
-    mat4_t m;
-
-    mul(&m, &camera->view, &(mat4_t) {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, CAM_THIRD_PERS_OFFS, 1});
-
-    camera->proj = perspective(camera->fov, camera->aspect, camera->nearplane, camera->farplane);
-
-    mul(&camera->rendermat, &m, &camera->proj);
 }
 
 void cameraUpdate(camera_t* const camera)
@@ -251,7 +239,7 @@ f32 dotV3F(vec3f_t a, vec3f_t b)
 
 vec3f_t crossV3F(vec3f_t a, vec3f_t b)
 {
-	return (vec3f_t) { a.y * b.z - b.y * a.z, -(a.x * b.z - b.x * a.z), a.x * b.y - b.x * a.y };
+	return (vec3f_t) { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
 }
 
 mat4_t mulM4(mat4_t m1, mat4_t m2)

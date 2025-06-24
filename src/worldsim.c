@@ -53,7 +53,7 @@ i32 initGameObject(const objectinfo_t* info, bool render)
     gameobj_t* obj = objbuf + numobjects;
 
     if (render)
-        addObjectToRenderBuf(numobjects);
+        rAddObjectToRenderBuf(numobjects);
 
     obj->visible = 1;
     obj->animation = NULL;
@@ -101,8 +101,7 @@ void loadScene(const sceneinfo_t* scene, gameobj_t** restrict player)
     rAssert((!(scene->rendermode & RENDER_MODE_LAYERED) || scene->layers) || scene->flags & SCENE_NO_RENDERMODE);
 
     resetScene();
-    resetRenderBuffers();
-
+    renderResetBuffers();
     resetAnimationQueue();
 
     if (!(scene->flags & SCENE_NO_RENDERMODE))
@@ -128,7 +127,7 @@ void loadScene(const sceneinfo_t* scene, gameobj_t** restrict player)
     playerobj->y = scene->player_y;
 
     if (scene->flags & SCENE_PLAYER_HITBOX)
-        addHitbox(playerobj);
+        rAddHitbox(playerobj);
 
     // add player animations
     for (const animinfo_t* i = scene->player->animations; i < scene->player->animations + scene->player->numanimations; i++) {
@@ -164,11 +163,11 @@ void loadScene(const sceneinfo_t* scene, gameobj_t** restrict player)
             if (scene->layers[i] < 0)
                 continue;
 
-            addObjectToLayer(i + 1, scene->layers[i]);
+            rAddObjectToLayer(i + 1, scene->layers[i]);
         }
 
         if (scene->layers[scene->numobjects] > -1)
-            addObjectToLayer(0, scene->layers[scene->numobjects]);
+            rAddObjectToLayer(0, scene->layers[scene->numobjects]);
     }
 
     *player = playerobj;
@@ -209,7 +208,10 @@ u32 startLevel(u32 levelid)
 
     renderMode(currentlvl->rendermode);
 
-    currentlvl->init(NULL);     // TODO check retval
+    if (currentlvl->init(NULL)) {
+        SDL_Log("[ERROR] Failed to initialize level");
+        return 1;
+    }
 
     return 0;
 }

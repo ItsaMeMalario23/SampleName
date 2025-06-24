@@ -8,35 +8,43 @@
 #define MOVE_PLAYER         (0.8f)
 #define MOUSE_SENSITIVITY   (0.04f)
 
+#define ODYSSEY_TEXTURE_W   (1920u)
+#define ODYSSEY_TEXTURE_H   (1080u)
+
 static context_t* context;
 static instate_t* input;
 static mouseinput_t* mouse;
 static camera_t* camera;
-static gameobj_t* player;
+
+static obj3D_t* player;
+static obj3D_t* wall;
+static obj3D_t* jet;
 
 static u32 odyssey;
 
 //
 //  Local functions
 //
-static void initOdyssey(void)
+static inline void initOdyssey(void)
 {
     odyssey = 1;
+
+    renderSetupOdyssey(ODYSSEY_TEXTURE_W, ODYSSEY_TEXTURE_H);
 
     renderMode(RENDER_MODE_ODYSSEY);
 
     lvl_mario.init(NULL);
 
-    setup3DVtxBuf(objects3D, 4);
+    rSetup3DVtxBuf(objects3D, 5);
 
-    objects3D[1].flags &= ~OBJECT_VISIBLE;  // wall
+    wall->flags &= ~OBJECT_VISIBLE;
 
-    objectUpdate(wall_3D);
+    objectUpdate(wall);
 
     mouse->mode = MOUSE_DISABLE_ALL;
 }
 
-static void exitOdyssey(void)
+static inline void exitOdyssey(void)
 {
     odyssey = 0;
 
@@ -44,9 +52,9 @@ static void exitOdyssey(void)
 
     renderMode(RENDER_MODE_3D);
 
-    setup3DVtxBuf(objects3D, 4);
+    rSetup3DVtxBuf(objects3D, 5);
 
-    objects3D[1].flags |= OBJECT_VISIBLE;   // wall
+    wall->flags |= OBJECT_VISIBLE;
 
     set3DInputMap();
 
@@ -69,8 +77,11 @@ static inline u32 handleInput(void)
         input->dynamic = 0;
         camera->flags ^= CAMERA_THIRD_PERSON;
         camera->flags |= CAMERA_NEED_REBUILD;
-        objects3D[3].flags ^= OBJECT_VISIBLE;   // player
-        setObjectPosition(objects3D + 3, camera->pos.x, 0.0f, camera->pos.z);
+
+        player->flags ^= OBJECT_VISIBLE;
+
+        setObjectPosition(player, camera->pos.x, 0.0f, camera->pos.z);
+
         return LEVEL_CONTINUE;
     }
     
@@ -94,7 +105,7 @@ static u32 init(void* restrict data)
     input = getInputState();
     mouse = getMouse();
     context = getContext();
-    camera = getCamera();
+    camera = renderGetCamera();
 
     SDL_SetWindowRelativeMouseMode(context->window, true);
 
@@ -106,10 +117,26 @@ static u32 init(void* restrict data)
     cameraInit(camera);
     setCameraPosition(camera, 0.0f, 0.5f, 2.0f);
     cameraUpdate(camera);
+    
+    player = getObjectByTag3D(TAG_PLAYER);
+    wall = getObjectByTag3D(TAG_WALL);
+    jet = getObjectByTag3D(TAG_JET);
 
-    setup3DVtxBuf(objects3D, 4);
+    rAssert(player);
+    rAssert(wall);
+    rAssert(jet);
+    
+    if (jet->flags & OBJECT_INCOMPLETE) {
+        if (!(jet->vtxbuf = parseStl("jet-blend", &jet->numvtx, 0xA1A1A1FF)))
+            return 1;
+    }
 
-    objects3D[3].flags &= ~OBJECT_VISIBLE;  // player
+    jet->flags &= ~OBJECT_INCOMPLETE;
+    jet->flags |= OBJECT_HEAP_ALLOC;
+
+    rSetup3DVtxBuf(objects3D, 5);
+
+    player->flags &= ~OBJECT_VISIBLE;
 
     return 0;
 }
@@ -149,7 +176,7 @@ static u32 update(f64 dt)
         setCameraPosition(camera, camera->pos.x + c * dx - s * dy, camera->pos.y, camera->pos.z + s * dx + c *dy);
 
         if (camera->flags & CAMERA_THIRD_PERSON)
-            setObjectPosition(objects3D + 3, camera->pos.x, 0.0f, camera->pos.z);
+            setObjectPosition(player, camera->pos.x, 0.0f, camera->pos.z);
     }
 
     cameraUpdate(camera);

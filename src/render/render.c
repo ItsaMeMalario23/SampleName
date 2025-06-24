@@ -8,97 +8,107 @@
 #include <render/render.h>
 #include <debug/rdebug.h>
 
+// Render mode
+static u32 rmode = RENDER_MODE_UNDEF;
+
+// Render pipelines
 static SDL_GPUGraphicsPipeline* pipeline2D;
+static SDL_GPUGraphicsPipeline* pipeline3D;
+static SDL_GPUGraphicsPipeline* pipelineOdyssey;
 static SDL_GPUGraphicsPipeline* pipelineLayers;
 static SDL_GPUGraphicsPipeline* pipelineHitbox;
 
-//
-static SDL_GPUGraphicsPipeline* pipeline3D;
-static SDL_GPUGraphicsPipeline* pipelineOdyssey;
+// 3D / Odyssey
+static SDL_GPUTexture* depthtexture;
 static SDL_GPUTexture* odysseytexture;
 static SDL_GPUSampler* odysseysampler;
-static SDL_GPUTransferBuffer* transferbuf3D;
-static SDL_GPUBuffer* vtxbuf3D;
+
 static camera_t camera;
 static context_t* context;
-static const obj3D_t* objbuf3D[RENDER_OBJ3D_BUF_SIZE];
-static u32 num3Dobjects;
-//
 
+static const obj3D_t* objbuf3D[RENDER_OBJ3D_BUF_SIZE];
+
+// Ascii texture
 static SDL_GPUTexture* asciitex;
 static SDL_GPUSampler* sampler;
 
+// Buffers
 static SDL_GPUTransferBuffer* asciitransferbuf;
 static SDL_GPUBuffer* asciigpubuf;
-
 static SDL_GPUTransferBuffer* boxtransferbuf;
 static SDL_GPUBuffer* boxvtxbuf;
+static SDL_GPUTransferBuffer* transferbuf3D;
+static SDL_GPUBuffer* vtxbuf3D;
 
 static SDL_GPUTextureFormat rfmt;
 
 SDL_Mutex* renderBufLock = NULL;
 
+// Objects
 static gameobj_t* objectbuf;
 
 static u32 num2Dchars;
 static u32 numlayerchars;
 static u32 numobjects;
+static u32 num3Dobjects;
 
 static u8 renderbuf[ASCII_OBJ_BUF_SIZE];
 
-// layers
+// Layers
 static u8 layerobjects[RENDER_MAX_LAYERS * RENDER_OBJ_PER_LAYER];
 static renderlayer_t layers[RENDER_MAX_LAYERS];
 
 static u32 indices[RENDER_MAX_LAYERS];
 static f32 scales[RENDER_MAX_LAYERS] = {0.4f, 0.6f, 0.8f, 1.0f, 1.2f, 1.2f};
 
-// hitboxes
+// Hitboxes
 static gameobj_t* hitboxes[RENDER_HITBOX_BUF_SIZE];
 static u32 numboxes;
 
-static u32 rmode = RENDER_MODE_UNDEF;
+static instate_t* input;    // TODO remove this
 
-static instate_t* input;
-
-void renderInit(context_t* const con, SDL_WindowFlags flags, u32 mode)
+void renderInit(SDL_WindowFlags flags, u32 mode)
 {
+    context = getContext();
+    input = getInputState();
+    objectbuf = getObjectBuf();
+
     // init window
-    rfmt = renderInitWindow(con, flags);
+    rfmt = renderInitWindow(context, flags);
 
     // init render pipelines
-    SDL_GPUShader* vert = renderLoadShader(con, "ascii2D.vert", 0, 0, 1, 0);
-    SDL_GPUShader* frag = renderLoadShader(con, "ascii2D.frag", 1, 0, 0, 0);
+    SDL_GPUShader* vert = renderLoadShader(context, "ascii2D.vert", 0, 0, 1, 0);
+    SDL_GPUShader* frag = renderLoadShader(context, "ascii2D.frag", 1, 0, 0, 0);
 
-    pipeline2D = renderInit2DPipeline(con->dev, vert, frag, rfmt);
+    pipeline2D = renderInit2DPipeline(context->dev, vert, frag, rfmt);
 
-    SDL_ReleaseGPUShader(con->dev, vert);
-    SDL_ReleaseGPUShader(con->dev, frag);
+    SDL_ReleaseGPUShader(context->dev, vert);
+    SDL_ReleaseGPUShader(context->dev, frag);
 
-    asciitex = renderInitAsciiTexture(con, "pressstart.bmp", &sampler);
+    asciitex = renderInitAsciiTexture(context, "pressstart.bmp", &sampler);
 
-    vert = renderLoadShader(con, "box.vert", 0, 0, 0, 0);
-    frag = renderLoadShader(con, "box.frag", 0, 0, 0, 0);
+    vert = renderLoadShader(context, "box.vert", 0, 0, 0, 0);
+    frag = renderLoadShader(context, "box.frag", 0, 0, 0, 0);
 
-    pipelineHitbox = renderInitBoxPipeline(con->dev, vert, frag, rfmt);
+    pipelineHitbox = renderInitBoxPipeline(context->dev, vert, frag, rfmt);
 
-    SDL_ReleaseGPUShader(con->dev, vert);
-    SDL_ReleaseGPUShader(con->dev, frag);
+    SDL_ReleaseGPUShader(context->dev, vert);
+    SDL_ReleaseGPUShader(context->dev, frag);
 
-    vert = renderLoadShader(con, "asciiLayers.vert", 0, 1, 1, 0);
-    frag = renderLoadShader(con, "ascii2D.frag", 1, 0, 0, 0);
+    vert = renderLoadShader(context, "asciiLayers.vert", 0, 1, 1, 0);
+    frag = renderLoadShader(context, "ascii2D.frag", 1, 0, 0, 0);
 
-    pipelineLayers = renderInit2DPipeline(con->dev, vert, frag, rfmt);
+    pipelineLayers = renderInit2DPipeline(context->dev, vert, frag, rfmt);
 
-    SDL_ReleaseGPUShader(con->dev, vert);
-    SDL_ReleaseGPUShader(con->dev, frag);
+    SDL_ReleaseGPUShader(context->dev, vert);
+    SDL_ReleaseGPUShader(context->dev, frag);
 
     if (!pipeline2D || !pipelineHitbox || !pipelineLayers || !asciitex)
         return;
 
     // init buffers
     asciitransferbuf = SDL_CreateGPUTransferBuffer(
-        con->dev,
+        context->dev,
         &(SDL_GPUTransferBufferCreateInfo) {
             .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
             .size = ASCII_CHAR_BUF_SIZE * sizeof(asciidata_t)
@@ -108,7 +118,7 @@ void renderInit(context_t* const con, SDL_WindowFlags flags, u32 mode)
     rAssert(asciitransferbuf);
 
     asciigpubuf = SDL_CreateGPUBuffer(
-        con->dev,
+        context->dev,
         &(SDL_GPUBufferCreateInfo) {
             .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
             .size = ASCII_CHAR_BUF_SIZE * sizeof(asciidata_t)
@@ -118,7 +128,7 @@ void renderInit(context_t* const con, SDL_WindowFlags flags, u32 mode)
     rAssert(asciigpubuf);
 
     boxtransferbuf = SDL_CreateGPUTransferBuffer(
-        con->dev,
+        context->dev,
         &(SDL_GPUTransferBufferCreateInfo) {
             .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
             .size = sizeof(vec2f_t) * 6 * RENDER_HITBOX_BUF_SIZE
@@ -128,7 +138,7 @@ void renderInit(context_t* const con, SDL_WindowFlags flags, u32 mode)
     rAssert(boxtransferbuf);
 
     boxvtxbuf = SDL_CreateGPUBuffer(
-        con->dev,
+        context->dev,
         &(SDL_GPUBufferCreateInfo) {
             .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
             .size = sizeof(vec2f_t) * 6 * RENDER_HITBOX_BUF_SIZE
@@ -142,39 +152,29 @@ void renderInit(context_t* const con, SDL_WindowFlags flags, u32 mode)
         layers[i].objects = layerobjects + (i * RENDER_OBJ_PER_LAYER);
     }
 
-    input = getInputState();
-    objectbuf = getObjectBuf();
+    vert = renderLoadShader(context, "test3D.vert", 0, 2, 0, 0);
+    frag = renderLoadShader(context, "test3D.frag", 0, 0, 0, 0);
 
-    rmode = mode;
+    pipeline3D = renderInit3DPipeline(context, vert, frag, &depthtexture, rfmt);
 
-    vert = renderLoadShader(con, "test3D.vert", 0, 2, 0, 0);
-    frag = renderLoadShader(con, "test3D.frag", 0, 0, 0, 0);
-
-    pipeline3D = renderInit3DPipeline(con->dev, vert, frag, rfmt);
-
-    if (!pipeline3D)
+    if (!pipeline3D || !depthtexture)
         return;
 
-    SDL_ReleaseGPUShader(con->dev, vert);
-    SDL_ReleaseGPUShader(con->dev, frag);
+    SDL_ReleaseGPUShader(context->dev, vert);
+    SDL_ReleaseGPUShader(context->dev, frag);
 
-    odysseytexture = renderInitOdysseyTexture(con, &odysseysampler, rfmt);
+    vert = renderLoadShader(context, "odyssey.vert", 0, 2, 0, 0);
+    frag = renderLoadShader(context, "odyssey.frag", 1, 0, 0, 0);
 
-    rAssert(odysseytexture);
-    rAssert(odysseysampler);
-
-    vert = renderLoadShader(con, "odyssey.vert", 0, 2, 0, 0);
-    frag = renderLoadShader(con, "odyssey.frag", 1, 0, 0, 0);
-
-    pipelineOdyssey = renderInitOdysseyPipeline(con->dev, vert, frag, rfmt);
+    pipelineOdyssey = renderInitOdysseyPipeline(context->dev, vert, frag, rfmt);
 
     if (!pipelineOdyssey)
         return;
 
-    SDL_ReleaseGPUShader(con->dev, vert);
-    SDL_ReleaseGPUShader(con->dev, frag);
+    SDL_ReleaseGPUShader(context->dev, vert);
+    SDL_ReleaseGPUShader(context->dev, frag);
 
-    context = getContext();
+    rmode = mode;
 }
 
 static inline void draw2D(SDL_GPURenderPass* const renderpass)
@@ -258,14 +258,14 @@ static inline void drawOdyssey2D(SDL_GPURenderPass* renderpass, SDL_GPUCommandBu
     SDL_BindGPUFragmentSamplers(renderpass, 0, &(SDL_GPUTextureSamplerBinding) { .texture = odysseytexture, .sampler = odysseysampler }, 1);
 
     SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera.rendermat, sizeof(mat4_t));
-    SDL_PushGPUVertexUniformData(cmdbuf, 1, &wall_3D->transform, sizeof(mat4_t));
+    SDL_PushGPUVertexUniformData(cmdbuf, 1, &objects3D[1].transform, sizeof(mat4_t));
 
     bool fucked = 0;
 
-    if (!wall_3D->vtxbufoffset)     // TODO why tf is this happening?
+    if (!objects3D[1].vtxbufoffset)     // TODO why tf is this happening?
         fucked = 1;
 
-    SDL_DrawGPUPrimitives(renderpass, wall_3D->numvtx, 1, fucked ? 24 : wall_3D->vtxbufoffset, 0);
+    SDL_DrawGPUPrimitives(renderpass, objects3D[1].numvtx, 1, fucked ? 24 : objects3D[1].vtxbufoffset, 0);
 }
 
 static inline void drawBoxes(SDL_GPURenderPass* const renderpass)
@@ -404,10 +404,12 @@ static inline void drawOdyssey(SDL_GPUCommandBuffer* cmdbuf, SDL_GPUTexture* swa
         cmdbuf,
         &(SDL_GPUColorTargetInfo) {
             .texture = odysseytexture,
-            .cycle = false,
+            .cycle = true,
             .load_op = SDL_GPU_LOADOP_CLEAR,
             .store_op = SDL_GPU_STOREOP_STORE,
-            .clear_color = (SDL_FColor) { 0.1f, 0.1f, 0.1f, 1.0f }
+            .clear_color = (SDL_FColor) {
+                0.10196f, 0.10196f, 0.10196f, 1.0f
+            }
         },
         1,
         NULL
@@ -428,18 +430,44 @@ static inline void drawOdyssey(SDL_GPUCommandBuffer* cmdbuf, SDL_GPUTexture* swa
         cmdbuf,
         &(SDL_GPUColorTargetInfo) {
             .texture = swapchain,
-            .cycle = false,
+            .cycle = true,
             .load_op = SDL_GPU_LOADOP_CLEAR,
             .store_op = SDL_GPU_STOREOP_STORE,
-            .clear_color = (SDL_FColor) { RENDER_CLEAR_COLOR_R, RENDER_CLEAR_COLOR_G, RENDER_CLEAR_COLOR_B, RENDER_CLEAR_COLOR_A }
+            .clear_color = (SDL_FColor) {
+                RENDER_CLEAR_COLOR_R,
+                RENDER_CLEAR_COLOR_G,
+                RENDER_CLEAR_COLOR_B,
+                RENDER_CLEAR_COLOR_A
+            }
         },
         1,
-        NULL
+        &(SDL_GPUDepthStencilTargetInfo) {
+            .texture = depthtexture,
+            .load_op = SDL_GPU_LOADOP_CLEAR,
+            .store_op = SDL_GPU_STOREOP_STORE,
+            .clear_depth = 10.0f,
+            .cycle = true
+        }
     );
 
     draw3D(renderpass, cmdbuf);
 
+    SDL_EndGPURenderPass(renderpass);
+
     SDL_WaitForGPUFences(dev, false, &f, 1);
+
+    // need to start new render pass, otherwise crash
+    renderpass = SDL_BeginGPURenderPass(
+        cmdbuf,
+        &(SDL_GPUColorTargetInfo) {
+            .texture = swapchain,
+            .cycle = true,
+            .load_op = SDL_GPU_LOADOP_LOAD,
+            .store_op = SDL_GPU_STOREOP_STORE,
+        },
+        1,
+        NULL
+    );
 
     drawOdyssey2D(renderpass, cmdbuf);
 
@@ -447,7 +475,7 @@ static inline void drawOdyssey(SDL_GPUCommandBuffer* cmdbuf, SDL_GPUTexture* swa
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 }
 
-void renderDraw(context_t* const con)
+void renderDraw(context_t* restrict con)
 {
     SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(con->dev);
 
@@ -510,7 +538,14 @@ void renderDraw(context_t* const con)
             .clear_color = (SDL_FColor) { RENDER_CLEAR_COLOR_R, RENDER_CLEAR_COLOR_G, RENDER_CLEAR_COLOR_B, RENDER_CLEAR_COLOR_A }
         },
         1,
-        NULL
+        rmode & RENDER_MODE_3D ?
+        &(SDL_GPUDepthStencilTargetInfo) {
+            .texture = depthtexture,
+            .load_op = SDL_GPU_LOADOP_CLEAR,
+            .store_op = SDL_GPU_STOREOP_DONT_CARE,
+            .clear_depth = 10.0f
+        }
+        : NULL
     );
 
     if (rmode & RENDER_MODE_2D)
@@ -530,12 +565,12 @@ void renderDraw(context_t* const con)
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 }
 
-u32 getRenderMode(void)
+u32 renderGetMode(void)
 {
     return rmode;
 }
 
-camera_t* getCamera(void)
+camera_t* renderGetCamera(void)
 {
     return &camera;
 }
@@ -543,8 +578,30 @@ camera_t* getCamera(void)
 // implicitly resets render buffers
 void renderMode(u32 mode)
 {
+    if (mode == RENDER_MODE_ODYSSEY)
+        rAssert(odysseytexture);
+
     rmode = mode;
-    resetRenderBuffers();
+    renderResetBuffers();
+}
+
+void renderSetupOdyssey(u32 w, u32 h)
+{
+    rAssert(w);
+    rAssert(h);
+
+    if (odysseysampler)
+        SDL_ReleaseGPUSampler(context->dev, odysseysampler);
+
+    if (odysseytexture)
+        SDL_ReleaseGPUTexture(context->dev, odysseytexture);
+
+    odysseysampler = NULL;
+    odysseytexture = NULL;
+
+    odysseytexture = renderInitOdysseyTexture(context, &odysseysampler, rfmt, w, h);
+
+    rAssert(odysseytexture);
 }
 
 void renderToggleHitboxes(void)
@@ -552,28 +609,58 @@ void renderToggleHitboxes(void)
     rmode ^= RENDER_MODE_HITBOXES;
 }
 
-void renderCleanup(context_t* const con)
+void renderResetBuffers(void)
 {
-    SDL_ReleaseGPUGraphicsPipeline(con->dev, pipeline2D);
-    SDL_ReleaseGPUGraphicsPipeline(con->dev, pipelineLayers);
-    SDL_ReleaseGPUGraphicsPipeline(con->dev, pipelineHitbox);
-    SDL_ReleaseGPUTransferBuffer(con->dev, asciitransferbuf);
-    SDL_ReleaseGPUTransferBuffer(con->dev, boxtransferbuf);
-    SDL_ReleaseGPUBuffer(con->dev, asciigpubuf);
-    SDL_ReleaseGPUBuffer(con->dev, boxvtxbuf);
-    SDL_ReleaseGPUTexture(con->dev, asciitex);
-    SDL_ReleaseGPUSampler(con->dev, sampler);
+    num2Dchars = 0;
+    numlayerchars = 0;
+    numobjects = 0;
+    num3Dobjects = 0;
+    numboxes = 0;
 
-    if (renderBufLock)
-        SDL_DestroyMutex(renderBufLock);
+    memset(hitboxes, 0, sizeof(hitboxes));
 
-    renderCleanupWindow(con);
+    for (renderlayer_t* i = layers; i < layers + RENDER_MAX_LAYERS; i++)
+        i->numobjects = 0;
+}
+
+void renderCleanup(void)
+{
+    if (!context) {
+        SDL_Log("[ERROR] Render cleanup failed: not initialized");
+        return;
+    }
+
+    SDL_ReleaseGPUGraphicsPipeline(context->dev, pipeline2D);
+    SDL_ReleaseGPUGraphicsPipeline(context->dev, pipeline3D);
+    SDL_ReleaseGPUGraphicsPipeline(context->dev, pipelineOdyssey);
+    SDL_ReleaseGPUGraphicsPipeline(context->dev, pipelineLayers);
+    SDL_ReleaseGPUGraphicsPipeline(context->dev, pipelineHitbox);
+    SDL_ReleaseGPUTransferBuffer(context->dev, asciitransferbuf);
+    SDL_ReleaseGPUTransferBuffer(context->dev, boxtransferbuf);
+    SDL_ReleaseGPUBuffer(context->dev, asciigpubuf);
+    SDL_ReleaseGPUBuffer(context->dev, boxvtxbuf);
+    SDL_ReleaseGPUTexture(context->dev, asciitex);
+    SDL_ReleaseGPUSampler(context->dev, sampler);
+
+    if (odysseysampler) SDL_ReleaseGPUSampler(context->dev, odysseysampler);
+
+    if (odysseytexture) SDL_ReleaseGPUTexture(context->dev, odysseytexture);
+
+    if (transferbuf3D) SDL_ReleaseGPUTransferBuffer(context->dev, transferbuf3D);
+
+    if (vtxbuf3D) SDL_ReleaseGPUBuffer(context->dev, vtxbuf3D);
+
+    if (renderBufLock) SDL_DestroyMutex(renderBufLock);
+
+    renderCleanupWindow(context);
+
+    context = NULL;
 }
 
 //
 //  Objects
 //
-void setup3DVtxBuf(obj3D_t* objects, u32 numobjects)
+void rSetup3DVtxBuf(obj3D_t* objects, u32 numobjects)
 {
     if (!objects) {
         SDL_Log("[ERROR] setup3DVtxBuf null ref");
@@ -623,7 +710,7 @@ void setup3DVtxBuf(obj3D_t* objects, u32 numobjects)
         memcpy(transfmem, i->vtxbuf, sizeof(vec3f_t) * i->numvtx);
 
         if (i->flags & OBJECT_RENDER)
-            add3DObjectToRenderBuf(i);
+            rAdd3DObjectToRenderBuf(i);
     }
 
     SDL_UnmapGPUTransferBuffer(context->dev, transferbuf3D);
@@ -650,7 +737,7 @@ void setup3DVtxBuf(obj3D_t* objects, u32 numobjects)
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 }
 
-void add3DObjectToRenderBuf(const obj3D_t* restrict object)
+void rAdd3DObjectToRenderBuf(const obj3D_t* restrict object)
 {
     rAssert(object);
 
@@ -662,7 +749,7 @@ void add3DObjectToRenderBuf(const obj3D_t* restrict object)
     objbuf3D[num3Dobjects++] = object;
 }
 
-void addObjectToRenderBuf(u32 object)
+void rAddObjectToRenderBuf(u32 object)
 {
     if (object >= ASCII_OBJ_BUF_SIZE || numobjects >= ASCII_OBJ_BUF_SIZE) {
         SDL_Log("[ERROR] Failed to add object to render buf");
@@ -672,7 +759,7 @@ void addObjectToRenderBuf(u32 object)
     renderbuf[numobjects++] = object;
 }
 
-void addObjectToLayer(u32 object, u32 layer)
+void rAddObjectToLayer(u32 object, u32 layer)
 {
     if (object >= ASCII_OBJ_BUF_SIZE || layer >= RENDER_MAX_LAYERS || layers[layer].numobjects >= RENDER_OBJ_PER_LAYER) {
         SDL_Log("[ERROR] Failed to add object to layer");
@@ -682,7 +769,7 @@ void addObjectToLayer(u32 object, u32 layer)
     layers[layer].objects[layers[layer].numobjects++] = object;
 }
 
-void addHitbox(gameobj_t* object)
+void rAddHitbox(gameobj_t* object)
 {
     for (u32 i = 0; i < RENDER_HITBOX_BUF_SIZE; i++) {
         if (!hitboxes[i]) {
@@ -695,7 +782,7 @@ void addHitbox(gameobj_t* object)
     SDL_Log("[ERROR] Failed to add hitbox, buffer full");
 }
 
-void removeHitbox(gameobj_t* object)
+void rRemoveHitbox(gameobj_t* object)
 {
     if (!numboxes) {
         SDL_Log("[ERROR] Failed to remove hitbox, no hitboxes in buf");
@@ -711,20 +798,6 @@ void removeHitbox(gameobj_t* object)
     }
 
     SDL_Log("[ERROR] Failed to remove hitbox, object has no hitbox");
-}
-
-void resetRenderBuffers(void)
-{
-    num2Dchars = 0;
-    numlayerchars = 0;
-    numobjects = 0;
-    num3Dobjects = 0;
-    numboxes = 0;
-
-    memset(hitboxes, 0, sizeof(hitboxes));
-
-    for (renderlayer_t* i = layers; i < layers + RENDER_MAX_LAYERS; i++)
-        i->numobjects = 0;
 }
 
 //

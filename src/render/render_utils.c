@@ -4,7 +4,7 @@
 #include <render/render.h>
 #include <debug/rdebug.h>
 
-SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* restrict filename, u32 samplerCnt, u32 uniBufCnt, u32 stoBufCnt, u32 stoTexCnt)
+SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* filename, u32 samplerCnt, u32 uniBufCnt, u32 stoBufCnt, u32 stoTexCnt)
 {
     SDL_GPUShaderStage stage;
 
@@ -68,7 +68,7 @@ SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* restrict fi
     return shader;
 }
 
-SDL_Surface* renderLoadBmp(context_t* restrict con, const char* restrict filename)
+SDL_Surface* renderLoadBmp(context_t* restrict con, const char* filename)
 {
     char path[256];
     SDL_Surface* surf;
@@ -199,21 +199,40 @@ SDL_GPUGraphicsPipeline* renderInitBoxPipeline(SDL_GPUDevice* dev, SDL_GPUShader
     );
 }
 
-SDL_GPUGraphicsPipeline* renderInit3DPipeline(SDL_GPUDevice* dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt)
+SDL_GPUGraphicsPipeline* renderInit3DPipeline(context_t* restrict con, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTexture** depthtex, SDL_GPUTextureFormat fmt)
 {
-    if (!dev || !vert || !frag) {
+    if (!con->dev || !vert || !frag || !depthtex) {
         SDL_Log("[ERROR] Init 3D pipeline null ref");
         return NULL;
     }
 
+    *depthtex = SDL_CreateGPUTexture(
+        con->dev,
+        &(SDL_GPUTextureCreateInfo) {
+            .format = SDL_GPU_TEXTUREFORMAT_D16_UNORM,
+            .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
+            .width = con->width,
+            .height = con->height,
+            .layer_count_or_depth = 1,
+            .num_levels = 1
+        }
+    );
+
     return SDL_CreateGPUGraphicsPipeline(
-        dev,
+        con->dev,
         &(SDL_GPUGraphicsPipelineCreateInfo) {
             .target_info = {
                 .num_color_targets = 1,
                 .color_target_descriptions = (SDL_GPUColorTargetDescription[]) {{
                     .format = fmt
-                }}
+                }},
+                .has_depth_stencil_target = true,
+                .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM
+            },
+            .depth_stencil_state = (SDL_GPUDepthStencilState) {
+                .enable_depth_test = true,
+                .enable_depth_write = true,
+                .compare_op = SDL_GPU_COMPAREOP_LESS
             },
             .vertex_input_state = (SDL_GPUVertexInputState) {
                 .num_vertex_buffers = 1,
@@ -261,8 +280,15 @@ SDL_GPUGraphicsPipeline* renderInitOdysseyPipeline(SDL_GPUDevice* dev, SDL_GPUSh
                 .num_color_targets = 1,
                 .color_target_descriptions = (SDL_GPUColorTargetDescription[]) {{
                     .format = fmt
-                }}
+                }},
+                //.has_depth_stencil_target = true,
+                //.depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM
             },
+            /*.depth_stencil_state = (SDL_GPUDepthStencilState) {
+                .enable_depth_test = true,
+                .enable_depth_write = true,
+                .compare_op = SDL_GPU_COMPAREOP_LESS
+            },*/
             .vertex_input_state = (SDL_GPUVertexInputState) {
                 .num_vertex_buffers = 1,
                 .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[]) {{
@@ -292,7 +318,7 @@ SDL_GPUGraphicsPipeline* renderInitOdysseyPipeline(SDL_GPUDevice* dev, SDL_GPUSh
     );
 }
 
-SDL_GPUTexture* renderInitAsciiTexture(context_t* restrict con, const char* restrict filename, SDL_GPUSampler** restrict sampler)
+SDL_GPUTexture* renderInitAsciiTexture(context_t* restrict con, const char* filename, SDL_GPUSampler** sampler)
 {
     rAssert(con);
     rAssert(con->dev);
@@ -384,7 +410,7 @@ SDL_GPUTexture* renderInitAsciiTexture(context_t* restrict con, const char* rest
     return tex;
 }
 
-SDL_GPUTexture* renderInitOdysseyTexture(context_t* con, SDL_GPUSampler** restrict sampler, SDL_GPUTextureFormat rfmt)
+SDL_GPUTexture* renderInitOdysseyTexture(context_t* restrict con, SDL_GPUSampler** sampler, SDL_GPUTextureFormat rfmt, u32 w, u32 h)
 {
     rAssert(con);
     rAssert(con->dev);
@@ -394,13 +420,13 @@ SDL_GPUTexture* renderInitOdysseyTexture(context_t* con, SDL_GPUSampler** restri
         con->dev,
         &(SDL_GPUTransferBufferCreateInfo) {
             .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-            .size = (1920 * 1080 * 4)
+            .size = w * 4
         }
     );
 
     void* transfmem = SDL_MapGPUTransferBuffer(con->dev, transfbuf, false);
 
-    memset(transfmem, 0, (1920 * 1080 * 4));
+    memset(transfmem, 0, w * 4);
 
     SDL_UnmapGPUTransferBuffer(con->dev, transfbuf);
 
@@ -409,8 +435,8 @@ SDL_GPUTexture* renderInitOdysseyTexture(context_t* con, SDL_GPUSampler** restri
         &(SDL_GPUTextureCreateInfo) {
             .type = SDL_GPU_TEXTURETYPE_2D,
             .format = rfmt,
-            .width = 1920,
-            .height = 1080,
+            .width = w,
+            .height = h,
             .layer_count_or_depth = 1,
             .num_levels = 1,
             //.sample_count = 1,
@@ -451,8 +477,8 @@ SDL_GPUTexture* renderInitOdysseyTexture(context_t* con, SDL_GPUSampler** restri
         },
         &(SDL_GPUTextureRegion) {
             .texture = tex,
-            .w = 1920,
-            .h = 1080,
+            .w = w,
+            .h = h,
             .d = 1
         },
         false

@@ -44,38 +44,39 @@ extern SDL_Mutex* renderBufLock;
 //
 //  Render utils
 //
-SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* restrict filename, u32 samplerCnt, u32 uniBufCnt, u32 stoBufCnt, u32 stoTexCnt);
-SDL_Surface* renderLoadBmp(context_t* restrict con, const char* restrict filename);
+SDL_GPUShader* renderLoadShader(context_t* restrict con, const char* filename, u32 samplerCnt, u32 uniBufCnt, u32 stoBufCnt, u32 stoTexCnt);
+SDL_Surface* renderLoadBmp(context_t* restrict con, const char* filename);
 
 SDL_GPUTextureFormat renderInitWindow(context_t* restrict con, SDL_WindowFlags flags);
 SDL_GPUGraphicsPipeline* renderInit2DPipeline(SDL_GPUDevice* dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
 SDL_GPUGraphicsPipeline* renderInitBoxPipeline(SDL_GPUDevice* dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
-SDL_GPUGraphicsPipeline* renderInit3DPipeline(SDL_GPUDevice* dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
+SDL_GPUGraphicsPipeline* renderInit3DPipeline(context_t* restrict con, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTexture** depthtex, SDL_GPUTextureFormat fmt);
 SDL_GPUGraphicsPipeline* renderInitOdysseyPipeline(SDL_GPUDevice* dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
-SDL_GPUTexture* renderInitAsciiTexture(context_t* restrict con, const char* restrict filename, SDL_GPUSampler** restrict sampler);
-SDL_GPUTexture* renderInitOdysseyTexture(context_t* con, SDL_GPUSampler** restrict sampler, SDL_GPUTextureFormat rfmt);
+SDL_GPUTexture* renderInitAsciiTexture(context_t* restrict con, const char* filename, SDL_GPUSampler** sampler);
+SDL_GPUTexture* renderInitOdysseyTexture(context_t* restrict con, SDL_GPUSampler** sampler, SDL_GPUTextureFormat rfmt, u32 w, u32 h);
 
 void renderCleanupWindow(context_t* restrict con);
 
 //
 //  Render
 //
-u32       getRenderMode(void);
-camera_t* getCamera(void);
+u32       renderGetMode(void);
+camera_t* renderGetCamera(void);
 
-void renderInit(context_t* const con, SDL_WindowFlags flags, u32 mode);
-void renderDraw(context_t* const con);
+void renderInit(SDL_WindowFlags flags, u32 mode);
+void renderDraw(context_t* restrict con);
 void renderMode(u32 mode);
+void renderSetupOdyssey(u32 w, u32 h);
 void renderToggleHitboxes(void);
-void renderCleanup(context_t* const con);
+void renderResetBuffers(void);
+void renderCleanup(void);
 
 //  Objects
-void setup3DVtxBuf(obj3D_t* objects, u32 numobjects);
-void add3DObjectToRenderBuf(const obj3D_t* restrict object);
-void addObjectToRenderBuf(u32 object);
-void addObjectToLayer(u32 object, u32 layer);
-void addHitbox(gameobj_t* object);
-void removeHitbox(gameobj_t* object);
-void resetRenderBuffers(void);
+void rSetup3DVtxBuf(obj3D_t* objects, u32 numobjects);
+void rAdd3DObjectToRenderBuf(const obj3D_t* restrict object);
+void rAddObjectToRenderBuf(u32 object);
+void rAddObjectToLayer(u32 object, u32 layer);
+void rAddHitbox(gameobj_t* object);
+void rRemoveHitbox(gameobj_t* object);
 
 #endif

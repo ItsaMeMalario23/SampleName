@@ -34,6 +34,8 @@ typedef struct camera_s {
 #define OBJECT_VISIBLE      (1u << 0)
 #define OBJECT_NEED_REBUILD (1u << 1)
 #define OBJECT_RENDER       (1u << 2)
+#define OBJECT_HEAP_ALLOC   (1u << 3)
+#define OBJECT_INCOMPLETE   (1u << 4)
 
 typedef struct obj3D_s {
     const vec3f_t*  vtxbuf;
@@ -45,6 +47,7 @@ typedef struct obj3D_s {
     f32             yaw;
     f32             roll;
     u32             flags;
+    u64             tag;
 } obj3D_t;
 
 //

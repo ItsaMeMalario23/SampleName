@@ -4,9 +4,9 @@
 #include <SDL3/SDL.h>
 
 #define R_DEBUG
-//#define RDEBUG_BREAK_CUSTOM
+#define RDEBUG_BREAK_CUSTOM
 //#define RDEBUG_BREAK_GCC
-#define RDEBUG_BREAK_DBREAK
+//#define RDEBUG_BREAK_DBREAK
 
 #define BLACK   0x000000ff
 #define WHITE   0xffffffff

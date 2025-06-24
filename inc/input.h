@@ -3,7 +3,21 @@
 
 #include <main.h>
 
-#define NUM_KEYS    400
+#define NUM_KEYS                    400
+
+// mouse input modes
+#define MOUSE_DISABLE_ALL           (1u << 0)
+#define MOUSE_DISABLE_MOTION        (1u << 0)
+#define MOUSE_DISABLE_WHEEL         (1u << 1)
+#define MOUSE_DISABLE_BUTTONS       (1u << 2)
+#define MOUSE_DISABLE_BUTTON_UP     (1u << 3)
+#define MOUSE_SEPARATE_WHEEL        (1u << 4)
+
+// bitmasks to check input mode
+#define MMASK_DISABLE_MOTION        (MOUSE_DISABLE_ALL | MOUSE_DISABLE_MOTION)
+#define MMASK_DISABLE_WHEEL         (MOUSE_DISABLE_ALL | MOUSE_DISABLE_WHEEL)
+#define MMASK_DISABLE_BUTTONS       (MOUSE_DISABLE_ALL | MOUSE_DISABLE_BUTTONS)
+#define MMASK_DISABLE_BUTTON_UP     (MOUSE_DISABLE_ALL | MOUSE_DISABLE_BUTTONS | MOUSE_DISABLE_BUTTON_UP)
 
 // Function types
 typedef SDL_AppResult (*kbevent_f)(u32);
@@ -24,20 +38,6 @@ typedef struct instate_s {
     u8 right;
     u8 showfps;
 } instate_t;
-
-// mouse input modes
-#define MOUSE_DISABLE_ALL           (1u << 0)
-#define MOUSE_DISABLE_MOTION        (1u << 0)
-#define MOUSE_DISABLE_WHEEL         (1u << 1)
-#define MOUSE_DISABLE_BUTTONS       (1u << 2)
-#define MOUSE_DISABLE_BUTTON_UP     (1u << 3)
-#define MOUSE_SEPARATE_WHEEL        (1u << 4)
-
-// bitmasks to check input mode
-#define MMASK_DISABLE_MOTION        (MOUSE_DISABLE_ALL | MOUSE_DISABLE_MOTION)
-#define MMASK_DISABLE_WHEEL         (MOUSE_DISABLE_ALL | MOUSE_DISABLE_WHEEL)
-#define MMASK_DISABLE_BUTTONS       (MOUSE_DISABLE_ALL | MOUSE_DISABLE_BUTTONS)
-#define MMASK_DISABLE_BUTTON_UP     (MOUSE_DISABLE_ALL | MOUSE_DISABLE_BUTTONS | MOUSE_DISABLE_BUTTON_UP)
 
 typedef struct mouseinput_s {
     u64         mode;

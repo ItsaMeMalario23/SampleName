@@ -17,7 +17,7 @@
 static instate_t* input;
 static gameobj_t* player;
 
-static u32 jmp = 0;
+static u32 jmp = 1;
 
 //
 //  Local functions
