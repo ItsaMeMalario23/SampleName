@@ -74,6 +74,8 @@ static u32 numboxes;
 
 static instate_t* input;    // TODO remove this
 
+static u32 odmode;
+
 void renderInit(SDL_WindowFlags flags, u32 mode)
 {
     context = getContext();
@@ -205,7 +207,7 @@ void renderInit(SDL_WindowFlags flags, u32 mode)
         context->dev,
         &(SDL_GPUTransferBufferCreateInfo) {
             .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-            .size = sizeof(f32) * 30
+            .size = sizeof(f32) * RENDER_NUM_ODYSSEY_VTX
         }
     );
 
@@ -215,7 +217,7 @@ void renderInit(SDL_WindowFlags flags, u32 mode)
         context->dev,
         &(SDL_GPUBufferCreateInfo) {
             .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-            .size = sizeof(f32) * 30
+            .size = sizeof(f32) * RENDER_NUM_ODYSSEY_VTX
         }
     );
 
@@ -224,6 +226,7 @@ void renderInit(SDL_WindowFlags flags, u32 mode)
     void* transfmem = SDL_MapGPUTransferBuffer(context->dev, tmp, false);
 
     memcpy(transfmem, wall_vtx_uv, sizeof(f32) * 30);
+    memcpy((f32*) transfmem + 30, wall2_vtx_uv, sizeof(f32) * 120);
 
     SDL_UnmapGPUTransferBuffer(context->dev, tmp);
 
@@ -239,7 +242,7 @@ void renderInit(SDL_WindowFlags flags, u32 mode)
         &(SDL_GPUBufferRegion) {
             .buffer = odysseybuf,
             .offset = 0,
-            .size = sizeof(f32) * 30
+            .size = sizeof(f32) * RENDER_NUM_ODYSSEY_VTX
         },
         false
     );
@@ -487,7 +490,7 @@ static inline void draw3D(SDL_GPURenderPass* const renderpass, SDL_GPUCommandBuf
     }
 }
 
-static inline void drawOdyssey2D(SDL_GPURenderPass* renderpass, SDL_GPUCommandBuffer* cmdbuf)
+static inline void drawOdyssey2D(SDL_GPURenderPass* renderpass, SDL_GPUCommandBuffer* cmdbuf, u32 mode)
 {
     SDL_BindGPUGraphicsPipeline(renderpass, pipelineOdyssey);
 
@@ -496,14 +499,14 @@ static inline void drawOdyssey2D(SDL_GPURenderPass* renderpass, SDL_GPUCommandBu
     SDL_BindGPUFragmentSamplers(renderpass, 0, &(SDL_GPUTextureSamplerBinding) { .texture = odysseytexture, .sampler = odysseysampler }, 1);
 
     SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera.rendermat, sizeof(mat4_t));
-    SDL_PushGPUVertexUniformData(cmdbuf, 1, &objects3D[1].transform, sizeof(mat4_t));
+    SDL_PushGPUVertexUniformData(cmdbuf, 1, mode ? &wall2_transform : &objects3D[1].transform, sizeof(mat4_t));
 
     bool fucked = 0;
 
     if (!objects3D[1].vtxbufoffset)     // TODO why tf is this happening?
         fucked = 1;
 
-    SDL_DrawGPUPrimitives(renderpass, 6, 1, 0, 0);
+    SDL_DrawGPUPrimitives(renderpass, mode ? 24 : 6, 1, mode ? 6 : 0, 0);
 }
 
 static inline void drawBoxes(SDL_GPURenderPass* const renderpass)
@@ -537,17 +540,6 @@ static inline void drawOdyssey(SDL_GPUCommandBuffer* cmdbuf, SDL_GPUDevice* dev)
     SDL_EndGPURenderPass(renderpass);
 
     SDL_SubmitGPUCommandBuffer(cmdbuf);
-
-    /*
-    SDL_GPUFence* f = SDL_SubmitGPUCommandBufferAndAcquireFence(cmdbuf);
-
-    if (!f)
-        SDL_Log("[ERROR] Failed to acquire fence: %s", SDL_GetError());
-
-    if (!SDL_WaitForGPUFences(context->dev, true, &f, 1))
-        SDL_Log("[ERROR] Failed to wait for fence: %s", SDL_GetError());
-
-    SDL_ReleaseGPUFence(context->dev, f);*/
 
     cmdbuf = SDL_AcquireGPUCommandBuffer(context->dev);
 
@@ -605,7 +597,7 @@ static inline void drawOdyssey(SDL_GPUCommandBuffer* cmdbuf, SDL_GPUDevice* dev)
         NULL
     );
 
-    drawOdyssey2D(renderpass, cmdbuf);
+    drawOdyssey2D(renderpass, cmdbuf, odmode);
 
     SDL_EndGPURenderPass(renderpass);
     SDL_SubmitGPUCommandBuffer(cmdbuf);
@@ -741,10 +733,12 @@ void renderMode(u32 mode)
     renderResetBuffers();
 }
 
-void renderSetupOdyssey(u32 w, u32 h)
+void renderSetupOdyssey(u32 w, u32 h, u32 mode)
 {
     rAssert(w);
     rAssert(h);
+
+    odmode = mode;
 
     if (odysseysampler)
         SDL_ReleaseGPUSampler(context->dev, odysseysampler);

@@ -26,6 +26,8 @@
 // max renderable 3D objects
 #define RENDER_OBJ3D_BUF_SIZE       32
 
+#define RENDER_NUM_ODYSSEY_VTX      150
+
 #define RENDER_MAX_LAYERS           6
 #define RENDER_OBJ_PER_LAYER        8
 
@@ -81,7 +83,7 @@ camera_t* renderGetCamera(void);
 void renderInit(SDL_WindowFlags flags, u32 mode);
 void renderDraw(context_t* restrict con);
 void renderMode(u32 mode);
-void renderSetupOdyssey(u32 w, u32 h);
+void renderSetupOdyssey(u32 w, u32 h, u32 mode);
 void renderToggleHitboxes(void);
 void renderResetBuffers(void);
 void renderCleanup(void);

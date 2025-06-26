@@ -10,8 +10,8 @@
 #define EXIT_3  (0u)
 #define EXIT_4  (0u)
 
-#define MOVE_PLAYER         (0.8f)
-#define MOUSE_SENSITIVITY   (0.04f)
+#define MOVE_PLAYER         (1.2f)
+#define MOUSE_SENSITIVITY   (0.06f)
 
 #define ODYSSEY_TEXTURE_W   (1920u)
 #define ODYSSEY_TEXTURE_H   (1080u)
@@ -23,6 +23,7 @@ static camera_t* camera;
 
 static obj3D_t* player;
 static obj3D_t* wall;
+static obj3D_t* wall2;
 static obj3D_t* jet;
 
 static u32 odyssey;
@@ -30,40 +31,48 @@ static u32 odyssey;
 //
 //  Local functions
 //
-static inline void initOdyssey(void)
+static inline void initOdyssey(u32 mode)
 {
-    odyssey = 1;
+    odyssey = mode + 1;
 
     mouse->mode = MOUSE_DISABLE_ALL;
 
-    renderSetupOdyssey(ODYSSEY_TEXTURE_W, ODYSSEY_TEXTURE_H);
+    renderSetupOdyssey(ODYSSEY_TEXTURE_W, ODYSSEY_TEXTURE_H, mode);
 
     renderMode(RENDER_MODE_ODYSSEY);
 
     lvl_mario.init(NULL);
 
-    rSetup3DVtxBuf(objects3D, 5);
+    rSetup3DVtxBuf(objects3D, 6);
 
-    wall->flags &= ~OBJECT_VISIBLE;
+    if (mode)
+        wall2->flags &= ~OBJECT_VISIBLE;
+    else
+        wall->flags &= ~OBJECT_VISIBLE;
 
     objectUpdate(wall);
 }
 
 static inline void exitOdyssey(void)
 {
-    odyssey = 0;
-
     lvl_mario.exit();
 
     renderMode(RENDER_MODE_3D);
 
-    rSetup3DVtxBuf(objects3D, 5);
+    rSetup3DVtxBuf(objects3D, 6);
 
     wall->flags |= OBJECT_VISIBLE;
+    
+    if (odyssey == 2)
+        wall2->flags |= OBJECT_VISIBLE;
+    else
+        wall2->flags |= OBJECT_VISIBLE;
 
     set3DInputMap();
 
     mouse->mode = 0;
+
+    odyssey = 0;
 }
 
 static inline u32 handleInput(void)
@@ -75,7 +84,7 @@ static inline u32 handleInput(void)
 
     case 2:
         input->dynamic = 0;
-        initOdyssey();
+        initOdyssey(0);
         return LEVEL_CONTINUE;
 
     case 3:
@@ -87,6 +96,14 @@ static inline u32 handleInput(void)
 
         setObjectPosition(player, camera->pos.x, 0.0f, camera->pos.z);
 
+        return LEVEL_CONTINUE;
+
+    case 4:
+        input->dynamic = 0;
+        initOdyssey(1);
+        return LEVEL_CONTINUE;
+
+    default:
         return LEVEL_CONTINUE;
     }
     
@@ -120,10 +137,12 @@ static u32 init(void* restrict data)
     
     player = getObjectByTag3D(TAG_PLAYER);
     wall = getObjectByTag3D(TAG_WALL);
+    wall2 = getObjectByTag3D(TAG_WALL2);
     jet = getObjectByTag3D(TAG_JET);
 
     rAssert(player);
     rAssert(wall);
+    rAssert(wall2);
     rAssert(jet);
     
     if (jet->flags & OBJECT_INCOMPLETE) {
@@ -134,9 +153,9 @@ static u32 init(void* restrict data)
     jet->flags &= ~OBJECT_INCOMPLETE;
     jet->flags |= OBJECT_HEAP_ALLOC;
 
-    rSetup3DVtxBuf(objects3D, 5);
+    rSetup3DVtxBuf(objects3D, 6);
 
-    //rSetupStaticUIBuf(&(uiobject_t) { (asciidata_t[]) {{1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f / 80.0f, 'x' - 32}}, 1 }, 1);
+    rSetupStaticUIBuf(&(uiobject_t) { (asciidata_t[]) {{1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f / 80.0f, 'x' - 32}}, 1 }, 1);
 
     player->flags &= ~OBJECT_VISIBLE;
 

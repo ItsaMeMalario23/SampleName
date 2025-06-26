@@ -99,6 +99,14 @@ static SDL_AppResult odysseymode(u32 kdown)
     return SDL_APP_CONTINUE;
 }
 
+static SDL_AppResult odysseymode2(u32 kdown)
+{
+    if (kdown)
+        state.dynamic = 4;
+
+    return SDL_APP_CONTINUE;
+}
+
 static SDL_AppResult thirdperson(u32 kdown)
 {
     if (kdown)
@@ -205,6 +213,7 @@ void set3DInputMap(void)
     kbmap[SDL_SCANCODE_D] = right;
 
     kbmap[SDL_SCANCODE_M] = odysseymode;
+    kbmap[SDL_SCANCODE_B] = odysseymode2;
     kbmap[SDL_SCANCODE_T] = thirdperson;
 }
 

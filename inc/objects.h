@@ -20,6 +20,7 @@ typedef enum tag_e {
     TAG_UNDEF,
     TAG_PLAYER,
     TAG_WALL,
+    TAG_WALL2,
     TAG_JET
 } tag;
 
@@ -30,6 +31,8 @@ extern obj3D_t* wall_3D;
 extern obj3D_t objects3D[];
 
 extern const f32 wall_vtx_uv[30];
+extern const f32 wall2_vtx_uv[120];
+extern const mat4_t wall2_transform;
 
 obj3D_t* getObjectByTag3D(tag objtag);
 
