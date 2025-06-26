@@ -20,6 +20,7 @@ PRIVATE
     src/levels/lvl_bird.c
     src/levels/lvl_mario.c
     src/levels/lvl_odyssey.c
+    src/levels/lvl_air.c
     src/debug/rdebug.c
     src/debug/memtrack.c
 )

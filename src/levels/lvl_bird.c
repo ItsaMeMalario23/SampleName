@@ -6,6 +6,11 @@
 #include <render/render.h>
 #include <debug/rdebug.h>
 
+#define EXIT_1  (1u)
+#define EXIT_2  (1u)
+#define EXIT_3  (1u)
+#define EXIT_4  (1u)
+
 #define MOVE_BIRD_X             (0.144)
 #define MOVE_BIRD_Y             (0.256)
 #define MOVE_SCREEN_X           (0.144)
@@ -91,4 +96,4 @@ static void lvlexit(void)
     SDL_Log("[INFO] Bird level exit");
 }
 
-level_t lvl_bird = { "Bird", init, update, lvlexit, 0, RENDER_MODE_LAYERED };
+level_t lvl_bird = { "Bird", init, update, lvlexit, 0, RENDER_MODE_LAYERED, {EXIT_1, EXIT_2, EXIT_3, EXIT_4} };

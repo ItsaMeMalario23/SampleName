@@ -295,7 +295,7 @@ SDL_GPUGraphicsPipeline* renderInitOdysseyPipeline(SDL_GPUDevice* dev, SDL_GPUSh
                     .slot = 0,
                     .instance_step_rate = 0,
                     .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
-                    .pitch = sizeof(vec3f_t)
+                    .pitch = sizeof(f32) * 5
                 }},
                 .num_vertex_attributes = 2,
                 .vertex_attributes = (SDL_GPUVertexAttribute[]) {{
@@ -307,7 +307,7 @@ SDL_GPUGraphicsPipeline* renderInitOdysseyPipeline(SDL_GPUDevice* dev, SDL_GPUSh
                     .buffer_slot = 0,
                     .location = 1,
                     .offset = sizeof(f32) * 3,
-                    .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT
+                    .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2
                 }}
             },
             .rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL,
@@ -420,13 +420,15 @@ SDL_GPUTexture* renderInitOdysseyTexture(context_t* restrict con, SDL_GPUSampler
         con->dev,
         &(SDL_GPUTransferBufferCreateInfo) {
             .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-            .size = w * 4
+            .size = h * w * 4
         }
     );
 
     void* transfmem = SDL_MapGPUTransferBuffer(con->dev, transfbuf, false);
 
-    memset(transfmem, 0, w * 4);
+    rAssert(transfmem);
+
+    memset(transfmem, 0, h * w * 4);
 
     SDL_UnmapGPUTransferBuffer(con->dev, transfbuf);
 
@@ -439,7 +441,6 @@ SDL_GPUTexture* renderInitOdysseyTexture(context_t* restrict con, SDL_GPUSampler
             .height = h,
             .layer_count_or_depth = 1,
             .num_levels = 1,
-            //.sample_count = 1,
             .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
         }
     );
@@ -485,6 +486,7 @@ SDL_GPUTexture* renderInitOdysseyTexture(context_t* restrict con, SDL_GPUSampler
     );
 
     SDL_EndGPUCopyPass(copypass);
+    
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 
     SDL_ReleaseGPUTransferBuffer(con->dev, transfbuf);

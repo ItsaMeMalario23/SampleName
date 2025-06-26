@@ -11,7 +11,7 @@ cbuffer UniformBlock : register(b1, space1)
 struct arg
 {
     float3 pos : TEXCOORD0;
-    uint corner : TEXCOORD1;
+    float2 uv : TEXCOORD1;
 };
 
 struct ret
@@ -26,6 +26,7 @@ ret main(arg a)
 
     r.pos = mul(rendermatrix, mul(modeltransform, float4(a.pos, 1.0f)));
 
+/*
     if (a.corner == 0x191919ff)
         r.texcoord = float2(0.0f, 1.0f);
     else if (a.corner == 0x201919ff)
@@ -33,7 +34,9 @@ ret main(arg a)
     else if (a.corner == 0x211919ff)
         r.texcoord = float2(1.0f, 0.0f);
     else
-        r.texcoord = float2(0.0f, 0.0f);
+        r.texcoord = float2(0.0f, 0.0f);*/
+
+    r.texcoord = a.uv;
 
     return r;
 }

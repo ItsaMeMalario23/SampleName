@@ -16,6 +16,7 @@
 #define LVL_ID_BIRD             (0u)
 #define LVL_ID_MARIO            (1u)
 #define LVL_ID_ODYSSEY          (2u)
+#define LVL_ID_AIR              (3u)
 
 typedef struct ascii2info_s {
     u32     charID;

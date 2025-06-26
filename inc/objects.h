@@ -29,6 +29,8 @@ extern obj3D_t* wall_3D;
 
 extern obj3D_t objects3D[];
 
+extern const f32 wall_vtx_uv[30];
+
 obj3D_t* getObjectByTag3D(tag objtag);
 
 vec3f_t* parseStl(const char* filename, u32* numvtx, u32 color);

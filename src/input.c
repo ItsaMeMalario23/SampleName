@@ -208,6 +208,23 @@ void set3DInputMap(void)
     kbmap[SDL_SCANCODE_T] = thirdperson;
 }
 
+void set3DAirInputMap(void)
+{
+    kbmap[SDL_SCANCODE_ESCAPE] = quit;
+    kbmap[SDL_SCANCODE_Q] = quit;
+
+    kbmap[SDL_SCANCODE_0] = dbreak;
+    kbmap[SDL_SCANCODE_F] = fps;
+    kbmap[SDL_SCANCODE_X] = lvlexit;
+
+    kbmap[SDL_SCANCODE_W] = up;
+    kbmap[SDL_SCANCODE_A] = left;
+    kbmap[SDL_SCANCODE_S] = down;
+    kbmap[SDL_SCANCODE_D] = right;
+
+    kbmap[SDL_SCANCODE_T] = thirdperson;
+}
+
 SDL_AppResult handleKBInput(SDL_Scancode key, u32 kdown)
 {
     // handle interrupt

@@ -5,6 +5,11 @@
 #include <render/render.h>
 #include <debug/rdebug.h>
 
+#define EXIT_1  (2u)
+#define EXIT_2  (2u)
+#define EXIT_3  (2u)
+#define EXIT_4  (2u)
+
 #define MARIO_FIXED_DT          (0.01666666f)     /* run mario logic at 60 hz */
 
 #define MOVE_MARIO_X            (0.00666666f)
@@ -130,4 +135,4 @@ static void lvlexit(void)
     SDL_Log("[INFO] Mario level exit");
 }
 
-level_t lvl_mario = { "Mario", init, update, lvlexit, 0, RENDER_MODE_2D };
+level_t lvl_mario = { "Mario", init, update, lvlexit, 0, RENDER_MODE_2D, {EXIT_1, EXIT_2, EXIT_3, EXIT_4} };

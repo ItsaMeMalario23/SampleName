@@ -320,7 +320,7 @@ const sceneinfo_t scene_bird = {
 
 const sceneinfo_t scene_mario = {
     .kbmapping = setStdInputMap,
-    .flags = SCENE_RENDER_ALL | SCENE_NO_RENDERMODE | SCENE_PLAYER_HITBOX,
+    .flags = SCENE_RENDER_ALL | SCENE_NO_RENDERMODE,
     .player_x = 1.0f,
     .player_y = 1.0f,
     .player = &(objectinfo_t) {
@@ -450,8 +450,8 @@ obj3D_t* terrain_3D = &terrain_obj;
 //
 
 static const vec3f_t wall_vtx[6] = {
-    {0, 0, 0, 0x191919ff}, {1.92f, 0, 0, 0x201919ff}, {1.92f, 1.08f, 0, 0x211919ff},
-    {0, 0, 0, 0x191919ff}, {1.92f, 1.08f, 0, 0x211919ff}, {0, 1.08f, 0, 0x221919ff}
+    {0, 0, 0, 0x191919ff}, {1.92f, 0, 0, 0x191919ff}, {1.92f, 1.08f, 0, 0x191919ff},
+    {0, 0, 0, 0x191919ff}, {1.92f, 1.08f, 0, 0x191919ff}, {0, 1.08f, 0, 0x191919ff}
 };
 
 static obj3D_t wall_obj = {
@@ -462,6 +462,11 @@ static obj3D_t wall_obj = {
 };
 
 obj3D_t* wall_3D = &wall_obj;
+
+const f32 wall_vtx_uv[30] = {
+    0, 0, 0, 0, 1, 1.92f, 0, 0, 1, 1, 1.92f, 1.08f, 0, 1, 0,
+    0, 0, 0, 0, 1, 1.92f, 1.08f, 0, 1, 0, 0, 1.08f, 0, 0, 0
+};
 
 //
 
@@ -585,9 +590,7 @@ vec3f_t* parseStl(const char* filename, u32* numvtx, u32 color)
         return NULL;
     }
 
-    u32 num;
-
-    memcpy(&num, buf + 80, sizeof(u32));
+    u32 num = *((u32*) (buf + 80));
 
     rAssert(num);
     rAssert(num < 4096);
@@ -601,27 +604,34 @@ vec3f_t* parseStl(const char* filename, u32* numvtx, u32 color)
         rAssert(i + 48 < buf + len);
 
         vec3f_t n;
-        memcpy(&n.x, i, sizeof(f32));
-        memcpy(&n.y, i + 4, sizeof(f32));
-        memcpy(&n.z, i + 8, sizeof(f32));
 
-        memcpy(&tmp[0].x, i + 12, sizeof(f32));
-        memcpy(&tmp[0].y, i + 16, sizeof(f32));
-        memcpy(&tmp[0].z, i + 20, sizeof(f32));
+        n.x = *((const f32*) i);
+        n.y = *((const f32*) (i + 4));
+        n.z = *((const f32*) (i + 8));
 
-        memcpy(&tmp[2].x, i + 24, sizeof(f32));
-        memcpy(&tmp[2].y, i + 28, sizeof(f32));
-        memcpy(&tmp[2].z, i + 32, sizeof(f32));
+        tmp[0].x = *((const f32*) (i + 12));
+        tmp[0].y = *((const f32*) (i + 16));
+        tmp[0].z = *((const f32*) (i + 20));
 
-        memcpy(&tmp[1].x, i + 36, sizeof(f32));
-        memcpy(&tmp[1].y, i + 40, sizeof(f32));
-        memcpy(&tmp[1].z, i + 44, sizeof(f32));
+        tmp[2].x = *((const f32*) (i + 24));
+        tmp[2].y = *((const f32*) (i + 28));
+        tmp[2].z = *((const f32*) (i + 32));
+
+        tmp[1].x = *((const f32*) (i + 36));
+        tmp[1].y = *((const f32*) (i + 40));
+        tmp[1].z = *((const f32*) (i + 44));
 
         winding(tmp, n);
 
         tmp[0].pad = color;
-        tmp[1].pad = color;
-        tmp[2].pad = color;
+
+        u8 c = ((u8) (color >> 8)) + 16;
+
+        tmp[1].pad = (c << 24) | (c << 16) | (c << 8) | 0xFF;
+
+        c += 16;
+
+        tmp[2].pad = (c << 24) | (c << 16) | (c << 8) | 0xFF;
     }
 
     rAssert(!num);

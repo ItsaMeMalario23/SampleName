@@ -5,6 +5,11 @@
 #include <render/camera.h>
 #include <debug/rdebug.h>
 
+#define EXIT_1  (0u)
+#define EXIT_2  (0u)
+#define EXIT_3  (0u)
+#define EXIT_4  (0u)
+
 #define MOVE_PLAYER         (0.8f)
 #define MOUSE_SENSITIVITY   (0.04f)
 
@@ -29,6 +34,8 @@ static inline void initOdyssey(void)
 {
     odyssey = 1;
 
+    mouse->mode = MOUSE_DISABLE_ALL;
+
     renderSetupOdyssey(ODYSSEY_TEXTURE_W, ODYSSEY_TEXTURE_H);
 
     renderMode(RENDER_MODE_ODYSSEY);
@@ -40,8 +47,6 @@ static inline void initOdyssey(void)
     wall->flags &= ~OBJECT_VISIBLE;
 
     objectUpdate(wall);
-
-    mouse->mode = MOUSE_DISABLE_ALL;
 }
 
 static inline void exitOdyssey(void)
@@ -109,11 +114,6 @@ static u32 init(void* restrict data)
 
     SDL_SetWindowRelativeMouseMode(context->window, true);
 
-    mouse->mode = 0;
-    mouse->motion = rotateCamera;
-
-    set3DInputMap();
-
     cameraInit(camera);
     setCameraPosition(camera, 0.0f, 0.5f, 2.0f);
     cameraUpdate(camera);
@@ -128,7 +128,7 @@ static u32 init(void* restrict data)
     
     if (jet->flags & OBJECT_INCOMPLETE) {
         if (!(jet->vtxbuf = parseStl("jet-blend", &jet->numvtx, 0xA1A1A1FF)))
-            return 1;
+            return LVL_INIT_FAILURE;
     }
 
     jet->flags &= ~OBJECT_INCOMPLETE;
@@ -136,9 +136,16 @@ static u32 init(void* restrict data)
 
     rSetup3DVtxBuf(objects3D, 5);
 
+    //rSetupStaticUIBuf(&(uiobject_t) { (asciidata_t[]) {{1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f / 80.0f, 'x' - 32}}, 1 }, 1);
+
     player->flags &= ~OBJECT_VISIBLE;
 
-    return 0;
+    mouse->mode = MOUSE_MODE_STD;
+    mouse->motion = rotateCamera;
+
+    set3DInputMap();
+
+    return LVL_INIT_SUCCESS;
 }
 
 //
@@ -193,4 +200,4 @@ static void lvlexit(void)
     SDL_SetWindowRelativeMouseMode(context->window, false);
 }
 
-level_t lvl_odyssey = { "Odyssey", init, update, lvlexit, 0, RENDER_MODE_3D };
+level_t lvl_odyssey = { "Odyssey", init, update, lvlexit, 0, RENDER_MODE_3D | RENDER_MODE_UI_STATIC, {EXIT_1, EXIT_2, EXIT_3, EXIT_4} };

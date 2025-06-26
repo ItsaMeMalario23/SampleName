@@ -201,6 +201,10 @@ u32 startLevel(u32 levelid)
         currentlvl = &lvl_odyssey;
         break;
 
+    case LVL_ID_AIR:
+        currentlvl = &lvl_air;
+        break;
+
     default:
         SDL_Log("[ERROR] Invalid level ID");
         return 1;
@@ -240,8 +244,10 @@ u32 gameUpdate(f64 dt)
     u32 ret;
     
     if (ret = currentlvl->update(dt)) {
-        if (startLevel(getNextLevel(currentlvlid, ret)))
-            return 1;
+        if (ret > 1 && ret < 6) {
+            if (startLevel(currentlvl->exits[ret - 2]))
+                return 1;
+        }
 
         return 0;
     }

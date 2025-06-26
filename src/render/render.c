@@ -39,6 +39,11 @@ static SDL_GPUTransferBuffer* boxtransferbuf;
 static SDL_GPUBuffer* boxvtxbuf;
 static SDL_GPUTransferBuffer* transferbuf3D;
 static SDL_GPUBuffer* vtxbuf3D;
+static SDL_GPUTransferBuffer* uitransferbuf_stat;
+static SDL_GPUBuffer* uibuf_stat;
+static SDL_GPUTransferBuffer* uitransferbuf_dyn;
+static SDL_GPUBuffer* uibuf_dyn;
+static SDL_GPUBuffer* odysseybuf;
 
 static SDL_GPUTextureFormat rfmt;
 
@@ -51,6 +56,8 @@ static u32 num2Dchars;
 static u32 numlayerchars;
 static u32 numobjects;
 static u32 num3Dobjects;
+static u32 numstaticuichars;
+static u32 numdynuichars;
 
 static u8 renderbuf[ASCII_OBJ_BUF_SIZE];
 
@@ -147,6 +154,26 @@ void renderInit(SDL_WindowFlags flags, u32 mode)
 
     rAssert(boxvtxbuf);
 
+    uitransferbuf_dyn = SDL_CreateGPUTransferBuffer(
+        context->dev,
+        &(SDL_GPUTransferBufferCreateInfo) {
+            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+            .size = RENDER_DYNUI_BUF_SIZE * sizeof(asciidata_t)
+        }
+    );
+
+    rAssert(uitransferbuf_dyn);
+
+    uibuf_dyn = SDL_CreateGPUBuffer(
+        context->dev,
+        &(SDL_GPUBufferCreateInfo) {
+            .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+            .size = RENDER_DYNUI_BUF_SIZE * sizeof(asciidata_t)
+        }
+    );
+
+    rAssert(uibuf_dyn);
+
     for (u32 i = 0; i < RENDER_MAX_LAYERS; i++) {
         layers[i].numobjects = 0;
         layers[i].objects = layerobjects + (i * RENDER_OBJ_PER_LAYER);
@@ -174,7 +201,197 @@ void renderInit(SDL_WindowFlags flags, u32 mode)
     SDL_ReleaseGPUShader(context->dev, vert);
     SDL_ReleaseGPUShader(context->dev, frag);
 
+    SDL_GPUTransferBuffer* tmp = SDL_CreateGPUTransferBuffer(
+        context->dev,
+        &(SDL_GPUTransferBufferCreateInfo) {
+            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+            .size = sizeof(f32) * 30
+        }
+    );
+
+    rAssert(tmp);
+
+    odysseybuf = SDL_CreateGPUBuffer(
+        context->dev,
+        &(SDL_GPUBufferCreateInfo) {
+            .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+            .size = sizeof(f32) * 30
+        }
+    );
+
+    rAssert(odysseybuf);
+
+    void* transfmem = SDL_MapGPUTransferBuffer(context->dev, tmp, false);
+
+    memcpy(transfmem, wall_vtx_uv, sizeof(f32) * 30);
+
+    SDL_UnmapGPUTransferBuffer(context->dev, tmp);
+
+    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(context->dev);
+    SDL_GPUCopyPass* copypass = SDL_BeginGPUCopyPass(cmdbuf);
+
+    SDL_UploadToGPUBuffer(
+        copypass,
+        &(SDL_GPUTransferBufferLocation) {
+            .transfer_buffer = tmp,
+            .offset = 0
+        },
+        &(SDL_GPUBufferRegion) {
+            .buffer = odysseybuf,
+            .offset = 0,
+            .size = sizeof(f32) * 30
+        },
+        false
+    );
+
+    SDL_EndGPUCopyPass(copypass);
+    SDL_SubmitGPUCommandBuffer(cmdbuf);
+
+    SDL_ReleaseGPUTransferBuffer(context->dev, tmp);
+
     rmode = mode;
+}
+
+static inline void transferAsciiBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevice* const dev)
+{
+    asciidata_t* transfmem = SDL_MapGPUTransferBuffer(context->dev, asciitransferbuf, true);
+
+    rAssert(asciitransferbuf);
+    rAssert(transfmem);
+    rAssert(numobjects);
+
+    num2Dchars = 0;
+
+    SDL_LockMutex(renderBufLock);
+
+    for (u32 i = 0; i < numobjects; i++) {
+        if (!objectbuf[renderbuf[i]].visible)
+            continue;
+
+        memcpy(transfmem + num2Dchars, objectbuf[renderbuf[i]].data, sizeof(asciidata_t) * objectbuf[renderbuf[i]].len);
+
+        num2Dchars += objectbuf[renderbuf[i]].len;
+    }
+
+    SDL_UnlockMutex(renderBufLock);
+
+    rAssert(num2Dchars < ASCII_CHAR_BUF_SIZE);
+
+    SDL_UnmapGPUTransferBuffer(context->dev, asciitransferbuf);
+
+    SDL_UploadToGPUBuffer(
+        copypass,
+        &(SDL_GPUTransferBufferLocation) {
+            .transfer_buffer = asciitransferbuf,
+            .offset = 0
+        },
+        &(SDL_GPUBufferRegion) {
+            .buffer = asciigpubuf,
+            .offset = 0,
+            .size = num2Dchars * sizeof(asciidata_t)
+        },
+        true
+    );
+}
+
+static inline void transferDynUIBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevice* const dev)
+{
+    SDL_UploadToGPUBuffer(
+        copypass,
+        &(SDL_GPUTransferBufferLocation) {
+            .transfer_buffer = uitransferbuf_dyn,
+            .offset = 0
+        },
+        &(SDL_GPUBufferRegion) {
+            .buffer = uibuf_dyn,
+            .offset = 0,
+            .size = numdynuichars * sizeof(asciidata_t)
+        },
+        true
+    );
+}
+
+static inline void transferLayerBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevice* const dev)
+{
+    asciidata_t* transfmem = SDL_MapGPUTransferBuffer(dev, asciitransferbuf, true);
+
+    memset(indices, 0, sizeof(indices));
+    numlayerchars = 0;
+
+    SDL_LockMutex(renderBufLock);
+
+    for (u32 i = 0; i < RENDER_MAX_LAYERS; i++)
+    {
+        indices[i] = numlayerchars;
+
+        for (u32 k = 0; k < layers[i].numobjects; k++)
+        {
+            if (!objectbuf[layers[i].objects[k]].visible)
+                continue;
+
+            memcpy(transfmem + numlayerchars, objectbuf[layers[i].objects[k]].data, sizeof(asciidata_t) * objectbuf[layers[i].objects[k]].len);
+            
+            numlayerchars += objectbuf[layers[i].objects[k]].len;
+        }
+    }
+
+    SDL_UnlockMutex(renderBufLock);
+
+    rAssert(numlayerchars < ASCII_CHAR_BUF_SIZE);
+
+    SDL_UnmapGPUTransferBuffer(dev, asciitransferbuf);
+
+    SDL_UploadToGPUBuffer(
+        copypass,
+        &(SDL_GPUTransferBufferLocation) {
+            .transfer_buffer = asciitransferbuf,
+            .offset = 0
+        },
+        &(SDL_GPUBufferRegion) {
+            .buffer = asciigpubuf,
+            .offset = 0,
+            .size = numlayerchars * sizeof(asciidata_t)
+        },
+        true
+    );
+}
+
+static inline void transferBoxVtxBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevice* const dev)
+{
+    rAssert(numboxes <= 8);
+
+    vec2f_t* transfmem = SDL_MapGPUTransferBuffer(dev, boxtransferbuf, true);
+
+    u32 k = 0;
+    for (gameobj_t** i = hitboxes; i < hitboxes + RENDER_HITBOX_BUF_SIZE; i++) {
+        if (!(*i))
+            continue;
+
+        transfmem[k]     = (vec2f_t) { (*i)->x + (*i)->hitbox_dx,                (*i)->y + (*i)->hitbox_dy + (*i)->yscale };
+        transfmem[k + 1] = (vec2f_t) { (*i)->x + (*i)->hitbox_dx + (*i)->xscale, (*i)->y + (*i)->hitbox_dy + (*i)->yscale };
+        transfmem[k + 2] = (vec2f_t) { (*i)->x + (*i)->hitbox_dx,                (*i)->y + (*i)->hitbox_dy                };
+        transfmem[k + 3] = (vec2f_t) { (*i)->x + (*i)->hitbox_dx + (*i)->xscale, (*i)->y + (*i)->hitbox_dy                };
+        transfmem[k + 4] = (vec2f_t) { (*i)->x + (*i)->hitbox_dx,                (*i)->y + (*i)->hitbox_dy                };
+        transfmem[k + 5] = (vec2f_t) { (*i)->x + (*i)->hitbox_dx + (*i)->xscale, (*i)->y + (*i)->hitbox_dy + (*i)->yscale };
+
+        k += 6;
+    }
+
+    SDL_UnmapGPUTransferBuffer(dev, boxtransferbuf);
+
+    SDL_UploadToGPUBuffer(
+        copypass,
+        &(SDL_GPUTransferBufferLocation) {
+            .transfer_buffer = boxtransferbuf,
+            .offset = 0
+        },
+        &(SDL_GPUBufferRegion) {
+            .buffer = boxvtxbuf,
+            .offset = 0,
+            .size = sizeof(vec2f_t) * 6 * numboxes
+        },
+        true
+    );
 }
 
 static inline void draw2D(SDL_GPURenderPass* const renderpass)
@@ -184,6 +401,26 @@ static inline void draw2D(SDL_GPURenderPass* const renderpass)
     SDL_BindGPUFragmentSamplers(renderpass, 0, &(SDL_GPUTextureSamplerBinding) { .texture = asciitex, .sampler = sampler }, 1);
 
     SDL_DrawGPUPrimitives(renderpass, num2Dchars * 6, 1, 0, 0);
+}
+
+static inline void drawStaticUI(SDL_GPURenderPass* const renderpass)
+{
+    SDL_BindGPUGraphicsPipeline(renderpass, pipeline2D);
+    SDL_BindGPUVertexStorageBuffers(renderpass, 0, &uibuf_stat, 1);
+    SDL_BindGPUFragmentSamplers(renderpass, 0, &(SDL_GPUTextureSamplerBinding) { .texture = asciitex, .sampler = sampler }, 1);
+
+    SDL_DrawGPUPrimitives(renderpass, numstaticuichars * 6, 1, 0, 0);
+}
+
+static inline void drawDynUI(SDL_GPURenderPass* const renderpass)
+{
+    rReleaseAssert(numdynuichars <= 256);
+
+    SDL_BindGPUGraphicsPipeline(renderpass, pipeline2D);
+    SDL_BindGPUVertexStorageBuffers(renderpass, 0, &uibuf_dyn, 1);
+    SDL_BindGPUFragmentSamplers(renderpass, 0, &(SDL_GPUTextureSamplerBinding) { .texture = asciitex, .sampler = sampler }, 1);
+
+    SDL_DrawGPUPrimitives(renderpass, numdynuichars * 6, 1, 0, 0);
 }
 
 static inline void drawLayers(SDL_GPURenderPass* const renderpass, SDL_GPUCommandBuffer* const cmdbuf)
@@ -254,7 +491,8 @@ static inline void drawOdyssey2D(SDL_GPURenderPass* renderpass, SDL_GPUCommandBu
 {
     SDL_BindGPUGraphicsPipeline(renderpass, pipelineOdyssey);
 
-    SDL_BindGPUVertexBuffers(renderpass, 0, &(SDL_GPUBufferBinding) { .buffer = vtxbuf3D, .offset = 0 }, 1);
+    //SDL_BindGPUVertexBuffers(renderpass, 0, &(SDL_GPUBufferBinding) { .buffer = vtxbuf3D, .offset = 0 }, 1);
+    SDL_BindGPUVertexBuffers(renderpass, 0, &(SDL_GPUBufferBinding) { .buffer = odysseybuf, .offset = 0 }, 1);
     SDL_BindGPUFragmentSamplers(renderpass, 0, &(SDL_GPUTextureSamplerBinding) { .texture = odysseytexture, .sampler = odysseysampler }, 1);
 
     SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera.rendermat, sizeof(mat4_t));
@@ -265,7 +503,7 @@ static inline void drawOdyssey2D(SDL_GPURenderPass* renderpass, SDL_GPUCommandBu
     if (!objects3D[1].vtxbufoffset)     // TODO why tf is this happening?
         fucked = 1;
 
-    SDL_DrawGPUPrimitives(renderpass, objects3D[1].numvtx, 1, fucked ? 24 : objects3D[1].vtxbufoffset, 0);
+    SDL_DrawGPUPrimitives(renderpass, 6, 1, 0, 0);
 }
 
 static inline void drawBoxes(SDL_GPURenderPass* const renderpass)
@@ -276,128 +514,7 @@ static inline void drawBoxes(SDL_GPURenderPass* const renderpass)
     SDL_DrawGPUPrimitives(renderpass, numboxes * 6, 1, 0, 0);
 }
 
-static inline void transferAsciiBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevice* const dev)
-{
-    asciidata_t* transfmem = SDL_MapGPUTransferBuffer(dev, asciitransferbuf, true);
-
-    num2Dchars = 0;
-
-    SDL_LockMutex(renderBufLock);
-
-    for (u32 i = 0; i < numobjects; i++) {
-        if (!objectbuf[renderbuf[i]].visible)
-            continue;
-
-        memcpy(transfmem + num2Dchars, objectbuf[renderbuf[i]].data, sizeof(asciidata_t) * objectbuf[renderbuf[i]].len);
-
-        num2Dchars += objectbuf[renderbuf[i]].len;
-    }
-
-    SDL_UnlockMutex(renderBufLock);
-
-    rAssert(num2Dchars < ASCII_CHAR_BUF_SIZE);
-
-    SDL_UnmapGPUTransferBuffer(dev, asciitransferbuf);
-
-    SDL_UploadToGPUBuffer(
-        copypass,
-        &(SDL_GPUTransferBufferLocation) {
-            .transfer_buffer = asciitransferbuf,
-            .offset = 0
-        },
-        &(SDL_GPUBufferRegion) {
-            .buffer = asciigpubuf,
-            .offset = 0,
-            .size = num2Dchars * sizeof(asciidata_t)
-        },
-        true
-    );
-}
-
-static inline void transferLayerBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevice* const dev)
-{
-    asciidata_t* transfmem = SDL_MapGPUTransferBuffer(dev, asciitransferbuf, true);
-
-    memset(indices, 0, sizeof(indices));
-    numlayerchars = 0;
-
-    SDL_LockMutex(renderBufLock);
-
-    for (u32 i = 0; i < RENDER_MAX_LAYERS; i++)
-    {
-        indices[i] = numlayerchars;
-
-        for (u32 k = 0; k < layers[i].numobjects; k++)
-        {
-            if (!objectbuf[layers[i].objects[k]].visible)
-                continue;
-
-            memcpy(transfmem + numlayerchars, objectbuf[layers[i].objects[k]].data, sizeof(asciidata_t) * objectbuf[layers[i].objects[k]].len);
-            
-            numlayerchars += objectbuf[layers[i].objects[k]].len;
-        }
-    }
-
-    SDL_UnlockMutex(renderBufLock);
-
-    rAssert(numlayerchars < ASCII_CHAR_BUF_SIZE);
-
-    SDL_UnmapGPUTransferBuffer(dev, asciitransferbuf);
-
-    SDL_UploadToGPUBuffer(
-        copypass,
-        &(SDL_GPUTransferBufferLocation) {
-            .transfer_buffer = asciitransferbuf,
-            .offset = 0
-        },
-        &(SDL_GPUBufferRegion) {
-            .buffer = asciigpubuf,
-            .offset = 0,
-            .size = numlayerchars * sizeof(asciidata_t)
-        },
-        true
-    );
-}
-
-static inline void transferBoxVtxBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevice* const dev)
-{
-    rAssert(numboxes <= 8);
-
-    vec2f_t* transfmem = SDL_MapGPUTransferBuffer(dev, boxtransferbuf, false);
-
-    u32 k = 0;
-    for (gameobj_t** i = hitboxes; i < hitboxes + RENDER_HITBOX_BUF_SIZE; i++) {
-        if (!(*i))
-            continue;
-
-        transfmem[k]     = (vec2f_t) { (*i)->x + (*i)->hitbox_dx,                (*i)->y + (*i)->hitbox_dy + (*i)->yscale };
-        transfmem[k + 1] = (vec2f_t) { (*i)->x + (*i)->hitbox_dx + (*i)->xscale, (*i)->y + (*i)->hitbox_dy + (*i)->yscale };
-        transfmem[k + 2] = (vec2f_t) { (*i)->x + (*i)->hitbox_dx,                (*i)->y + (*i)->hitbox_dy                };
-        transfmem[k + 3] = (vec2f_t) { (*i)->x + (*i)->hitbox_dx + (*i)->xscale, (*i)->y + (*i)->hitbox_dy                };
-        transfmem[k + 4] = (vec2f_t) { (*i)->x + (*i)->hitbox_dx,                (*i)->y + (*i)->hitbox_dy                };
-        transfmem[k + 5] = (vec2f_t) { (*i)->x + (*i)->hitbox_dx + (*i)->xscale, (*i)->y + (*i)->hitbox_dy + (*i)->yscale };
-
-        k += 6;
-    }
-
-    SDL_UnmapGPUTransferBuffer(dev, boxtransferbuf);
-
-    SDL_UploadToGPUBuffer(
-        copypass,
-        &(SDL_GPUTransferBufferLocation) {
-            .transfer_buffer = boxtransferbuf,
-            .offset = 0
-        },
-        &(SDL_GPUBufferRegion) {
-            .buffer = boxvtxbuf,
-            .offset = 0,
-            .size = sizeof(vec2f_t) * 6 * numboxes
-        },
-        false
-    );
-}
-
-static inline void drawOdyssey(SDL_GPUCommandBuffer* cmdbuf, SDL_GPUTexture* swapchain, SDL_GPUDevice* dev)
+static inline void drawOdyssey(SDL_GPUCommandBuffer* cmdbuf, SDL_GPUDevice* dev)
 {
     // 2D mario scene render pass
     SDL_GPURenderPass* renderpass = SDL_BeginGPURenderPass(
@@ -419,11 +536,32 @@ static inline void drawOdyssey(SDL_GPUCommandBuffer* cmdbuf, SDL_GPUTexture* swa
 
     SDL_EndGPURenderPass(renderpass);
 
+    SDL_SubmitGPUCommandBuffer(cmdbuf);
+
+    /*
     SDL_GPUFence* f = SDL_SubmitGPUCommandBufferAndAcquireFence(cmdbuf);
 
-    cmdbuf = SDL_AcquireGPUCommandBuffer(dev);
+    if (!f)
+        SDL_Log("[ERROR] Failed to acquire fence: %s", SDL_GetError());
 
-    rAssert(cmdbuf);
+    if (!SDL_WaitForGPUFences(context->dev, true, &f, 1))
+        SDL_Log("[ERROR] Failed to wait for fence: %s", SDL_GetError());
+
+    SDL_ReleaseGPUFence(context->dev, f);*/
+
+    cmdbuf = SDL_AcquireGPUCommandBuffer(context->dev);
+
+    SDL_GPUTexture* swapchain;
+
+    if (!SDL_WaitAndAcquireGPUSwapchainTexture(cmdbuf, context->window, &swapchain, NULL, NULL)) {
+        SDL_Log("[ERROR] Failed to acquire swapchain texture O: %s", SDL_GetError());
+        return;
+    }
+
+    if (!swapchain) {
+        SDL_SubmitGPUCommandBuffer(cmdbuf);
+        return;
+    }
 
     // 3D scene render pass
     renderpass = SDL_BeginGPURenderPass(
@@ -443,18 +581,16 @@ static inline void drawOdyssey(SDL_GPUCommandBuffer* cmdbuf, SDL_GPUTexture* swa
         1,
         &(SDL_GPUDepthStencilTargetInfo) {
             .texture = depthtexture,
+            .cycle = true,
             .load_op = SDL_GPU_LOADOP_CLEAR,
-            .store_op = SDL_GPU_STOREOP_STORE,
-            .clear_depth = 10.0f,
-            .cycle = true
+            .store_op = SDL_GPU_STOREOP_DONT_CARE,
+            .clear_depth = 10.0f
         }
     );
 
     draw3D(renderpass, cmdbuf);
 
     SDL_EndGPURenderPass(renderpass);
-
-    SDL_WaitForGPUFences(dev, false, &f, 1);
 
     // need to start new render pass, otherwise crash
     renderpass = SDL_BeginGPURenderPass(
@@ -477,9 +613,13 @@ static inline void drawOdyssey(SDL_GPUCommandBuffer* cmdbuf, SDL_GPUTexture* swa
 
 void renderDraw(context_t* restrict con)
 {
-    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(con->dev);
+    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(context->dev);
 
-    if (rmode & RENDER_MODE_2D || rmode & RENDER_MODE_LAYERED || rmode & RENDER_MODE_HITBOXES || rmode & RENDER_MODE_ODYSSEY) {
+    rAssert(cmdbuf);
+
+    u32 m = rmode;
+
+    if (m & RMODE_REQUIRE_COPYPASS) {
         if (!cmdbuf) {
             SDL_Log("[ERROR] Failed to acquire copy cmd buf: %s", SDL_GetError());
             return;
@@ -488,21 +628,31 @@ void renderDraw(context_t* restrict con)
         // copy pass
         SDL_GPUCopyPass* copypass = SDL_BeginGPUCopyPass(cmdbuf);
 
-        if (rmode & RENDER_MODE_2D || rmode & RENDER_MODE_ODYSSEY)
-            transferAsciiBuf(copypass, con->dev);
-        
-        if (rmode & RENDER_MODE_LAYERED)
-            transferLayerBuf(copypass, con->dev);
+        rAssert(copypass);
 
-        if (rmode & RENDER_MODE_HITBOXES && numboxes)
-            transferBoxVtxBuf(copypass, con->dev);
+        if (m & RENDER_MODE_2D || m & RENDER_MODE_ODYSSEY)
+            transferAsciiBuf(copypass, context->dev);
+        
+        if (m & RENDER_MODE_LAYERED)
+            transferLayerBuf(copypass, context->dev);
+
+        if (m & RENDER_MODE_HITBOXES && numboxes)
+            transferBoxVtxBuf(copypass, context->dev);
+
+        if (m & RENDER_MODE_UI_DYNAMIC && numdynuichars & (1u << 31)) {
+            numdynuichars << 1 >> 1;    // clear transfer flag
+
+            rAssert(numdynuichars < 256);
+
+            transferDynUIBuf(copypass, context->dev);
+        }
 
         SDL_EndGPUCopyPass(copypass);
 
         // submit buffers as early as possible
         SDL_SubmitGPUCommandBuffer(cmdbuf);
 
-        cmdbuf = SDL_AcquireGPUCommandBuffer(con->dev);
+        cmdbuf = SDL_AcquireGPUCommandBuffer(context->dev);
     }
 
     if (!cmdbuf) {
@@ -510,9 +660,14 @@ void renderDraw(context_t* restrict con)
         return;
     }
 
+    if (m & RENDER_MODE_ODYSSEY) {
+        drawOdyssey(cmdbuf, context->dev);
+        return;
+    }
+
     SDL_GPUTexture* swapchain;
 
-    if (!SDL_WaitAndAcquireGPUSwapchainTexture(cmdbuf, con->window, &swapchain, NULL, NULL)) {
+    if (!SDL_WaitAndAcquireGPUSwapchainTexture(cmdbuf, context->window, &swapchain, NULL, NULL)) {
         SDL_Log("[ERROR] Failed to acquire swapchain texture: %s", SDL_GetError());
         return;
     }
@@ -522,25 +677,21 @@ void renderDraw(context_t* restrict con)
         return;
     }
 
-    if (rmode & RENDER_MODE_ODYSSEY) {
-        drawOdyssey(cmdbuf, swapchain, con->dev);
-        return;
-    }
-
     // render pass
     SDL_GPURenderPass* renderpass = SDL_BeginGPURenderPass(
         cmdbuf,
         &(SDL_GPUColorTargetInfo) {
             .texture = swapchain,
-            .cycle = false,
+            .cycle = true,
             .load_op = SDL_GPU_LOADOP_CLEAR,
             .store_op = SDL_GPU_STOREOP_STORE,
             .clear_color = (SDL_FColor) { RENDER_CLEAR_COLOR_R, RENDER_CLEAR_COLOR_G, RENDER_CLEAR_COLOR_B, RENDER_CLEAR_COLOR_A }
         },
         1,
-        rmode & RENDER_MODE_3D ?
+        m & RENDER_MODE_3D ?
         &(SDL_GPUDepthStencilTargetInfo) {
             .texture = depthtexture,
+            .cycle = true,
             .load_op = SDL_GPU_LOADOP_CLEAR,
             .store_op = SDL_GPU_STOREOP_DONT_CARE,
             .clear_depth = 10.0f
@@ -548,20 +699,25 @@ void renderDraw(context_t* restrict con)
         : NULL
     );
 
-    if (rmode & RENDER_MODE_2D)
+    if (m & RENDER_MODE_2D)
         draw2D(renderpass);
     
-    if (rmode & RENDER_MODE_LAYERED)
+    if (m & RENDER_MODE_LAYERED)
         drawLayers(renderpass, cmdbuf);
 
-    if (rmode & RENDER_MODE_HITBOXES && numboxes)
+    if (m & RENDER_MODE_HITBOXES && numboxes)
         drawBoxes(renderpass);
 
-    if (rmode & RENDER_MODE_3D && num3Dobjects)
+    if (m & RENDER_MODE_3D && num3Dobjects)
         draw3D(renderpass, cmdbuf);
 
-    SDL_EndGPURenderPass(renderpass);
+    if (m & RENDER_MODE_UI_STATIC && numstaticuichars)
+        drawStaticUI(renderpass);
 
+    if (m & RENDER_MODE_UI_DYNAMIC && numdynuichars)
+        drawDynUI(renderpass);
+
+    SDL_EndGPURenderPass(renderpass);
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 }
 
@@ -600,8 +756,6 @@ void renderSetupOdyssey(u32 w, u32 h)
     odysseytexture = NULL;
 
     odysseytexture = renderInitOdysseyTexture(context, &odysseysampler, rfmt, w, h);
-
-    rAssert(odysseytexture);
 }
 
 void renderToggleHitboxes(void)
@@ -652,6 +806,11 @@ void renderCleanup(void)
 
     if (renderBufLock) SDL_DestroyMutex(renderBufLock);
 
+    SDL_ReleaseGPUTransferBuffer(context->dev, uitransferbuf_stat);
+    SDL_ReleaseGPUTransferBuffer(context->dev, uitransferbuf_dyn);
+    SDL_ReleaseGPUBuffer(context->dev, uibuf_stat);
+    SDL_ReleaseGPUBuffer(context->dev, uibuf_dyn);
+
     renderCleanupWindow(context);
 
     context = NULL;
@@ -660,20 +819,20 @@ void renderCleanup(void)
 //
 //  Objects
 //
-void rSetup3DVtxBuf(obj3D_t* objects, u32 numobjects)
+void rSetup3DVtxBuf(obj3D_t* objects, u32 numobjs)
 {
     if (!objects) {
         SDL_Log("[ERROR] setup3DVtxBuf null ref");
         return;
     }
 
-    if (!numobjects || numobjects > RENDER_OBJ3D_BUF_SIZE) {
-        SDL_Log("[ERROR] Unable to create %ld 3D elements, max %ld", numobjects, RENDER_OBJ3D_BUF_SIZE);
+    if (!numobjs || numobjs > RENDER_OBJ3D_BUF_SIZE) {
+        SDL_Log("[ERROR] Unable to create %ld 3D elements, max %ld", numobjs, RENDER_OBJ3D_BUF_SIZE);
         return;
     }
 
     u32 len = 0;
-    const obj3D_t* bound = objects + numobjects;
+    const obj3D_t* bound = objects + numobjs;
 
     for (obj3D_t* i = objects; i->vtxbuf && i < bound; i->vtxbufoffset = len, len += i->numvtx, i++);
 
@@ -733,8 +892,86 @@ void rSetup3DVtxBuf(obj3D_t* objects, u32 numobjects)
     );
 
     SDL_EndGPUCopyPass(copypass);
+    SDL_SubmitGPUCommandBuffer(cmdbuf);
+}
+
+void rSetupStaticUIBuf(uiobject_t* objects, u32 numobjs)
+{
+    rAssert(objects);
+    rAssert(numobjs);
+
+    const uiobject_t* bound = objects + numobjs;
+
+    for (uiobject_t* i = objects; i->data && i < bound; i->bufoffset = numstaticuichars, numstaticuichars += i->len, i++);
+
+    rAssert(numstaticuichars < 16384);
+
+    if (uitransferbuf_stat)
+        SDL_ReleaseGPUTransferBuffer(context->dev, uitransferbuf_stat);
+
+    if (uibuf_stat)
+        SDL_ReleaseGPUBuffer(context->dev, uibuf_stat);
+
+    uitransferbuf_stat = SDL_CreateGPUTransferBuffer(
+        context->dev,
+        &(SDL_GPUTransferBufferCreateInfo) {
+            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+            .size = numstaticuichars * sizeof(asciidata_t)
+        }
+    );
+
+    uibuf_stat = SDL_CreateGPUBuffer(
+        context->dev,
+        &(SDL_GPUBufferCreateInfo) {
+            .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+            .size = numstaticuichars * sizeof(asciidata_t)
+        }
+    );
+
+    rAssert(uitransferbuf_stat);
+    rAssert(uibuf_stat);
+
+    asciidata_t* mem = SDL_MapGPUTransferBuffer(context->dev, uitransferbuf_stat, true);
+
+    for (const uiobject_t* i = objects; i < bound; mem += i->len, i++)
+        memcpy(mem, i->data, i->len * sizeof(asciidata_t));
+
+    SDL_UnmapGPUTransferBuffer(context->dev, uitransferbuf_stat);
+
+    SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(context->dev);
+    SDL_GPUCopyPass* copypass = SDL_BeginGPUCopyPass(cmdbuf);
+
+    SDL_UploadToGPUBuffer(
+        copypass,
+        &(SDL_GPUTransferBufferLocation) {
+            .transfer_buffer = uitransferbuf_stat,
+            .offset = 0
+        },
+        &(SDL_GPUBufferRegion) {
+            .buffer = uibuf_stat,
+            .offset = 0,
+            .size = numstaticuichars * sizeof(asciidata_t)
+        },
+        true
+    );
+
+    SDL_EndGPUCopyPass(copypass);
 
     SDL_SubmitGPUCommandBuffer(cmdbuf);
+}
+
+void rTransferDynUIBuf(const asciidata_t* data, u32 len)
+{
+    if (!data || !len || len > RENDER_DYNUI_BUF_SIZE)
+        return;
+
+    void* mem = SDL_MapGPUTransferBuffer(context->dev, uitransferbuf_dyn, true);
+
+    memcpy(mem, data, len * sizeof(asciidata_t));
+
+    SDL_UnmapGPUTransferBuffer(context->dev, uitransferbuf_dyn);
+
+    numdynuichars = len | (1u << 31);   // set transfer flag
 }
 
 void rAdd3DObjectToRenderBuf(const obj3D_t* restrict object)

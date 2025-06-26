@@ -6,6 +6,7 @@
 #define NUM_KEYS                    400
 
 // mouse input modes
+#define MOUSE_MODE_STD              (0u)
 #define MOUSE_DISABLE_ALL           (1u << 0)
 #define MOUSE_DISABLE_MOTION        (1u << 0)
 #define MOUSE_DISABLE_WHEEL         (1u << 1)
@@ -53,6 +54,7 @@ mouseinput_t* getMouse(void);
 void setStdInputMap(void);
 void set2DLayerInputMap(void);
 void set3DInputMap(void);
+void set3DAirInputMap(void);
 
 SDL_AppResult handleKBInput(SDL_Scancode key, u32 kdown);
 
