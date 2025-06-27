@@ -567,7 +567,7 @@ static inline void drawOdyssey(SDL_GPUCommandBuffer* cmdbuf, SDL_GPUDevice* dev)
                 RENDER_CLEAR_COLOR_R,
                 RENDER_CLEAR_COLOR_G,
                 RENDER_CLEAR_COLOR_B,
-                RENDER_CLEAR_COLOR_A
+                1.0f
             }
         },
         1,
@@ -677,7 +677,12 @@ void renderDraw(context_t* restrict con)
             .cycle = true,
             .load_op = SDL_GPU_LOADOP_CLEAR,
             .store_op = SDL_GPU_STOREOP_STORE,
-            .clear_color = (SDL_FColor) { RENDER_CLEAR_COLOR_R, RENDER_CLEAR_COLOR_G, RENDER_CLEAR_COLOR_B, RENDER_CLEAR_COLOR_A }
+            .clear_color = (SDL_FColor) {
+                RENDER_CLEAR_COLOR_R,
+                RENDER_CLEAR_COLOR_G,
+                RENDER_CLEAR_COLOR_B,
+                1.0f
+            }
         },
         1,
         m & RENDER_MODE_3D ?
@@ -1031,9 +1036,19 @@ void rRemoveHitbox(gameobj_t* object)
     SDL_Log("[ERROR] Failed to remove hitbox, object has no hitbox");
 }
 
-//
-//
-//
+void moveGameObject(const gameobj_t* restrict obj, f32 dx, f32 dy)
+{
+    rAssert(obj && obj->len && obj->data);
+
+    if (!obj || !obj->len || !obj->data)
+        return;
+
+    for (u32 i = 0; i < obj->len; i++) {
+        obj->data[i].x += dx;
+        obj->data[i].y += dy;
+    }
+}
+
 /*
 void handleCollision(void)
 {
@@ -1054,16 +1069,3 @@ void handleCollision(void)
     }
 }
 */
-
-void moveGameObject(const gameobj_t* restrict obj, f32 dx, f32 dy)
-{
-    rAssert(obj && obj->len && obj->data);
-
-    if (!obj || !obj->len || !obj->data)
-        return;
-
-    for (u32 i = 0; i < obj->len; i++) {
-        obj->data[i].x += dx;
-        obj->data[i].y += dy;
-    }
-}

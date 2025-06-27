@@ -155,7 +155,7 @@ static u32 init(void* restrict data)
 
     rSetup3DVtxBuf(objects3D, 6);
 
-    rSetupStaticUIBuf(&(uiobject_t) { (asciidata_t[]) {{1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f / 80.0f, 'x' - 32}}, 1 }, 1);
+    rSetupStaticUIBuf(&(uiobject_t) {(asciidata_t[]) {{1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f / 80.0f, 'x' - 32}}, 1}, 1);
 
     player->flags &= ~OBJECT_VISIBLE;
 

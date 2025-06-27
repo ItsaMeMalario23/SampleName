@@ -35,10 +35,9 @@
 #define RENDER_DYNUI_BUF_SIZE       256
 
 // std background color as FColor
-#define RENDER_CLEAR_COLOR_R        ( 24.0f / 255.0f)
-#define RENDER_CLEAR_COLOR_G        ( 32.0f / 255.0f)
-#define RENDER_CLEAR_COLOR_B        ( 84.0f / 255.0f)
-#define RENDER_CLEAR_COLOR_A        (  1.0f)
+#define RENDER_CLEAR_COLOR_R        (24.0f / 255.0f)
+#define RENDER_CLEAR_COLOR_G        (32.0f / 255.0f)
+#define RENDER_CLEAR_COLOR_B        (84.0f / 255.0f)
 
 //
 //  Typedefs

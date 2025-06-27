@@ -121,9 +121,10 @@ void cameraUpdate(camera_t* const camera)
     if (!(camera->flags & CAMERA_NEED_REBUILD))
         return;
 
+    camera->flags &= ~CAMERA_NEED_REBUILD;
+
     if (camera->flags & CAMERA_THIRD_PERSON) {
         thirdPers(camera);
-        camera->flags &= ~CAMERA_NEED_REBUILD;
         return;
     }
 
@@ -136,8 +137,6 @@ void cameraUpdate(camera_t* const camera)
     camera->proj = perspective(camera->fov, camera->aspect, camera->nearplane, camera->farplane);
 
     mul(&camera->rendermat, &camera->view, &camera->proj);
-
-    camera->flags &= ~CAMERA_NEED_REBUILD;
 }
 
 void setCameraViewport(camera_t* const camera, f32 width, f32 height)
@@ -196,8 +195,6 @@ void objectUpdate(obj3D_t* const object)
     mul(&object->transform, &(mat4_t) { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, object->pos.x, object->pos.y, object->pos.z, 1 }, &m);
 
     object->flags &= ~OBJECT_NEED_REBUILD;
-
-    //printMatrix(&object->transform, "transform");
 }
 
 void setObjectPosition(obj3D_t* const object, f32 x, f32 y, f32 z)
