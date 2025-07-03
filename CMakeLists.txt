@@ -12,11 +12,13 @@ PRIVATE
     src/main.c
     src/input.c
     src/objects.c
+    src/algebra.c
     src/animation.c
     src/worldsim.c
     src/render/render_utils.c
     src/render/render.c
     src/render/camera.c
+    src/game/aircraft.c
     src/levels/lvl_bird.c
     src/levels/lvl_mario.c
     src/levels/lvl_odyssey.c

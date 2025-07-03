@@ -4,6 +4,7 @@
 #include <input.h>
 #include <worldsim.h>
 #include <objects.h>
+#include <algebra.h>
 #include <render/camera.h>
 #include <render/render.h>
 #include <debug/rdebug.h>
@@ -16,6 +17,7 @@ static SDL_GPUGraphicsPipeline* pipeline2D;
 static SDL_GPUGraphicsPipeline* pipeline3D;
 static SDL_GPUGraphicsPipeline* pipelineOdyssey;
 static SDL_GPUGraphicsPipeline* pipelineLayers;
+static SDL_GPUGraphicsPipeline* pipeline3DDebug;
 static SDL_GPUGraphicsPipeline* pipelineHitbox;
 
 // 3D / Odyssey
@@ -190,6 +192,15 @@ void renderInit(SDL_WindowFlags flags, u32 mode)
         return;
 
     SDL_ReleaseGPUShader(context->dev, vert);
+
+    vert = renderLoadShader(context, "debug3D.vert", 0, 2, 0, 0);
+
+    pipeline3DDebug = renderInit3DDebugPipeline(context, vert, frag, rfmt);
+
+    if (!pipeline3DDebug)
+        return;
+
+    SDL_ReleaseGPUShader(context->dev, vert);
     SDL_ReleaseGPUShader(context->dev, frag);
 
     vert = renderLoadShader(context, "odyssey.vert", 0, 2, 0, 0);
@@ -255,7 +266,7 @@ void renderInit(SDL_WindowFlags flags, u32 mode)
     rmode = mode;
 }
 
-static inline void transferAsciiBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevice* const dev)
+static inline void transferAsciiBuf(SDL_GPUCopyPass* copypass, SDL_GPUDevice* dev)
 {
     asciidata_t* transfmem = SDL_MapGPUTransferBuffer(context->dev, asciitransferbuf, true);
 
@@ -297,7 +308,7 @@ static inline void transferAsciiBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevi
     );
 }
 
-static inline void transferDynUIBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevice* const dev)
+static inline void transferDynUIBuf(SDL_GPUCopyPass* copypass, SDL_GPUDevice* dev)
 {
     SDL_UploadToGPUBuffer(
         copypass,
@@ -314,7 +325,7 @@ static inline void transferDynUIBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevi
     );
 }
 
-static inline void transferLayerBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevice* const dev)
+static inline void transferLayerBuf(SDL_GPUCopyPass* copypass, SDL_GPUDevice* dev)
 {
     asciidata_t* transfmem = SDL_MapGPUTransferBuffer(dev, asciitransferbuf, true);
 
@@ -359,7 +370,7 @@ static inline void transferLayerBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevi
     );
 }
 
-static inline void transferBoxVtxBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDevice* const dev)
+static inline void transferBoxVtxBuf(SDL_GPUCopyPass* copypass, SDL_GPUDevice* dev)
 {
     rAssert(numboxes <= 8);
 
@@ -397,7 +408,7 @@ static inline void transferBoxVtxBuf(SDL_GPUCopyPass* const copypass, SDL_GPUDev
     );
 }
 
-static inline void draw2D(SDL_GPURenderPass* const renderpass)
+static inline void draw2D(SDL_GPURenderPass* renderpass)
 {
     SDL_BindGPUGraphicsPipeline(renderpass, pipeline2D);
     SDL_BindGPUVertexStorageBuffers(renderpass, 0, &asciigpubuf, 1);
@@ -406,7 +417,7 @@ static inline void draw2D(SDL_GPURenderPass* const renderpass)
     SDL_DrawGPUPrimitives(renderpass, num2Dchars * 6, 1, 0, 0);
 }
 
-static inline void drawStaticUI(SDL_GPURenderPass* const renderpass)
+static inline void drawStaticUI(SDL_GPURenderPass* renderpass)
 {
     SDL_BindGPUGraphicsPipeline(renderpass, pipeline2D);
     SDL_BindGPUVertexStorageBuffers(renderpass, 0, &uibuf_stat, 1);
@@ -415,7 +426,7 @@ static inline void drawStaticUI(SDL_GPURenderPass* const renderpass)
     SDL_DrawGPUPrimitives(renderpass, numstaticuichars * 6, 1, 0, 0);
 }
 
-static inline void drawDynUI(SDL_GPURenderPass* const renderpass)
+static inline void drawDynUI(SDL_GPURenderPass* renderpass)
 {
     rReleaseAssert(numdynuichars <= 256);
 
@@ -426,7 +437,7 @@ static inline void drawDynUI(SDL_GPURenderPass* const renderpass)
     SDL_DrawGPUPrimitives(renderpass, numdynuichars * 6, 1, 0, 0);
 }
 
-static inline void drawLayers(SDL_GPURenderPass* const renderpass, SDL_GPUCommandBuffer* const cmdbuf)
+static inline void drawLayers(SDL_GPURenderPass* renderpass, SDL_GPUCommandBuffer* cmdbuf)
 {
     SDL_BindGPUGraphicsPipeline(renderpass, pipelineLayers);
     SDL_BindGPUVertexStorageBuffers(renderpass, 0, &asciigpubuf, 1);
@@ -471,7 +482,7 @@ static inline void drawLayers(SDL_GPURenderPass* const renderpass, SDL_GPUComman
     SDL_DrawGPUPrimitives(renderpass, (numlayerchars - indices[5]) * 6, 1, indices[5] * 6, 0);
 }
 
-static inline void draw3D(SDL_GPURenderPass* const renderpass, SDL_GPUCommandBuffer* const cmdbuf)
+static inline void draw3D(SDL_GPURenderPass* renderpass, SDL_GPUCommandBuffer* cmdbuf)
 {
     SDL_BindGPUGraphicsPipeline(renderpass, pipeline3D);
     SDL_BindGPUVertexBuffers(renderpass, 0, &(SDL_GPUBufferBinding) { .buffer = vtxbuf3D, .offset = 0 }, 1);
@@ -487,6 +498,21 @@ static inline void draw3D(SDL_GPURenderPass* const renderpass, SDL_GPUCommandBuf
 
         SDL_PushGPUVertexUniformData(cmdbuf, 1, &(*i)->transform, sizeof(mat4_t));
         SDL_DrawGPUPrimitives(renderpass, (*i)->numvtx, 1, (*i)->vtxbufoffset, 0);
+    }
+}
+
+static inline void draw3DDebug(SDL_GPURenderPass* renderpass, SDL_GPUCommandBuffer* cmdbuf)
+{
+    SDL_BindGPUGraphicsPipeline(renderpass, pipeline3DDebug);
+    SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera.rendermat, sizeof(mat4_t));
+
+    const obj3D_t** bound = objbuf3D + num3Dobjects;
+    for (const obj3D_t** i = objbuf3D; i < bound; i++) {
+        if (!((*i)->flags & OBJECT_VISIBLE) || !((*i)->flags & OBJECT_RENDER_DEBUG))
+            continue;
+
+        SDL_PushGPUVertexUniformData(cmdbuf, 1, &(*i)->transform, sizeof(mat4_t));
+        SDL_DrawGPUPrimitives(renderpass, 6, 1, 0, 0);
     }
 }
 
@@ -707,6 +733,9 @@ void renderDraw(context_t* restrict con)
 
     if (m & RENDER_MODE_3D && num3Dobjects)
         draw3D(renderpass, cmdbuf);
+
+    if (m & RENDER_MODE_DEBUG_3D)
+        draw3DDebug(renderpass, cmdbuf);
 
     if (m & RENDER_MODE_UI_STATIC && numstaticuichars)
         drawStaticUI(renderpass);

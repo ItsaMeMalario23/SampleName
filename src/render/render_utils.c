@@ -256,7 +256,11 @@ SDL_GPUGraphicsPipeline* renderInit3DPipeline(context_t* restrict con, SDL_GPUSh
                 }}
             },
             .rasterizer_state = (SDL_GPURasterizerState) {
-                .fill_mode = SDL_GPU_FILLMODE_FILL,
+                #ifdef DEBUG_WIREFRAMES
+                    .fill_mode = SDL_GPU_FILLMODE_LINE,
+                #else
+                    .fill_mode = SDL_GPU_FILLMODE_FILL,
+                #endif
                 .cull_mode = SDL_GPU_CULLMODE_BACK,
             },
             .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
@@ -312,6 +316,30 @@ SDL_GPUGraphicsPipeline* renderInitOdysseyPipeline(SDL_GPUDevice* dev, SDL_GPUSh
             },
             .rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL,
             .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
+            .vertex_shader = vert,
+            .fragment_shader = frag
+        }
+    );
+}
+
+SDL_GPUGraphicsPipeline* renderInit3DDebugPipeline(context_t* restrict con, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt)
+{
+    if (!con->dev || !vert || !frag) {
+        SDL_Log("[ERROR] Init 3D pipeline null ref");
+        return NULL;
+    }
+
+    return SDL_CreateGPUGraphicsPipeline(
+        con->dev,
+        &(SDL_GPUGraphicsPipelineCreateInfo) {
+            .target_info = {
+                .num_color_targets = 1,
+                .color_target_descriptions = (SDL_GPUColorTargetDescription[]) {{
+                    .format = fmt
+                }}
+            },
+            .rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL,
+            .primitive_type = SDL_GPU_PRIMITIVETYPE_LINELIST,
             .vertex_shader = vert,
             .fragment_shader = frag
         }

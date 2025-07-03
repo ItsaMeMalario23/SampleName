@@ -5,6 +5,7 @@
 #include <SDL3/SDL.h>
 
 #include <objects.h>
+#include <algebra.h>
 #include <input.h>
 #include <render/render.h>
 #include <render/camera.h>
@@ -515,7 +516,7 @@ static obj3D_t player_obj = {
 };
 
 // array
-obj3D_t objects3D[] = {{
+obj3D_t objects3D[6] = {{
         .numvtx = sizeof(terrain_vtx) / sizeof(vec3f_t),
         .vtxbuf = terrain_vtx,
         .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER
@@ -548,11 +549,39 @@ obj3D_t objects3D[] = {{
     }
 };
 
-obj3D_t* getObjectByTag3D(tag objtag)
-{
-    const obj3D_t* bound = objects3D + (sizeof(objects3D) / sizeof(obj3D_t));
+obj3D_t objects3D2[5] = {{
+        .numvtx = sizeof(terrain_vtx) / sizeof(vec3f_t),
+        .vtxbuf = terrain_vtx,
+        .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER
+    }, {
+        .numvtx = sizeof(wall_vtx) / sizeof(vec3f_t),
+        .vtxbuf = wall_vtx,
+        .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER,
+        .pos = {-4.0f, 0, -4.0f},
+        .tag = TAG_WALL
+    }, {
+        .numvtx = sizeof(pyramid_vtx) / sizeof(vec3f_t),
+        .vtxbuf = pyramid_vtx,
+        .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER,
+        .pos = {7.0f, 0.0f, 0.0f}
+    }, {
+        .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER | OBJECT_INCOMPLETE | OBJECT_RENDER_DEBUG,
+        .pos = {2.0f, 0.2f, 4.0f},
+        .tag = TAG_JET
+    }, {
+        .numvtx = sizeof(wall2_vtx) / sizeof(vec3f_t),
+        .vtxbuf = wall2_vtx,
+        .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER,
+        .pos = {-7.0f, 0, 0},
+        .tag = TAG_WALL2
+    }
+};
 
-    for (obj3D_t* i = objects3D; i < bound; i++) {
+obj3D_t* getObjectByTag3D(tag objtag, obj3D_t* objects, u32 len)
+{
+    const obj3D_t* bound = objects + len;
+
+    for (obj3D_t* i = objects; i < bound; i++) {
         if (i->tag == objtag)
             return i;
     }
@@ -567,7 +596,7 @@ static inline void winding(vec3f_t* triangle, vec3f_t normal)
     vec3f_t a = {triangle[1].x - triangle[0].x, triangle[1].y - triangle[0].y, triangle[1].z - triangle[0].z};
     vec3f_t b = {triangle[2].x - triangle[0].x, triangle[2].y - triangle[0].y, triangle[2].z - triangle[0].z};
 
-    vec3f_t n = crossV3F(a, b);
+    vec3f_t n = v3Cross(a, b);
 
     if ((n.x > 0.0f && normal.x < 0.0f) || (n.x < 0.0f && normal.x > 0.0f))
         goto swap;

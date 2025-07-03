@@ -151,6 +151,45 @@ static SDL_AppResult scrdown(u32 kdown)
 }
 
 //
+//  Aircraft controls
+//
+static SDL_AppResult thrustinc(u32 kdown)
+{
+    if (kdown)
+        state.dynamic |= (1u << 4);
+
+    return SDL_APP_CONTINUE;
+}
+
+static SDL_AppResult thrustdec(u32 kdown)
+{
+    if (kdown)
+        state.dynamic |= (1u << 5);
+
+    return SDL_APP_CONTINUE;
+}
+
+static SDL_AppResult lrudder(u32 kdown)
+{
+    if (kdown)
+        state.dynamic |= (1u << 6);
+    else
+        state.dynamic &= ~(1u << 6);
+
+    return SDL_APP_CONTINUE;
+}
+
+static SDL_AppResult rrudder(u32 kdown)
+{
+    if (kdown)
+        state.dynamic |= (1u << 7);
+    else
+        state.dynamic &= ~(1u << 7);
+
+    return SDL_APP_CONTINUE;
+}
+
+//
 //  Keyboard mappings
 //
 static kbevent_f kbmap[NUM_KEYS];
@@ -220,16 +259,22 @@ void set3DInputMap(void)
 void set3DAirInputMap(void)
 {
     kbmap[SDL_SCANCODE_ESCAPE] = quit;
-    kbmap[SDL_SCANCODE_Q] = quit;
+    //kbmap[SDL_SCANCODE_X] = quit;
 
     kbmap[SDL_SCANCODE_0] = dbreak;
-    kbmap[SDL_SCANCODE_F] = fps;
+    kbmap[SDL_SCANCODE_P] = fps;
     kbmap[SDL_SCANCODE_X] = lvlexit;
 
     kbmap[SDL_SCANCODE_W] = up;
     kbmap[SDL_SCANCODE_A] = left;
     kbmap[SDL_SCANCODE_S] = down;
     kbmap[SDL_SCANCODE_D] = right;
+
+    kbmap[SDL_SCANCODE_R] = thrustinc;
+    kbmap[SDL_SCANCODE_F] = thrustdec;
+
+    kbmap[SDL_SCANCODE_Q] = lrudder;
+    kbmap[SDL_SCANCODE_E] = rrudder;
 
     kbmap[SDL_SCANCODE_T] = thirdperson;
 }

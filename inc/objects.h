@@ -3,7 +3,6 @@
 
 #include <main.h>
 #include <worldsim.h>
-#include <render/camera.h>
 
 #define BIRD_X_SCALE    (0.1f)
 #define BIRD_Y_SCALE    (0.13333333f)
@@ -13,9 +12,6 @@
 
 #define FLAG_Y_OFFSET   (0.006f)
 
-extern const sceneinfo_t scene_bird;
-extern const sceneinfo_t scene_mario;
-
 typedef enum tag_e {
     TAG_UNDEF,
     TAG_PLAYER,
@@ -24,17 +20,34 @@ typedef enum tag_e {
     TAG_JET
 } tag;
 
+typedef struct obj3D_s {
+    const vec3f_t*  vtxbuf;
+    mat4_t          transform;
+    vec3f_t         pos;
+    u32             vtxbufoffset;
+    u32             numvtx;
+    f32             pitch;
+    f32             yaw;
+    f32             roll;
+    u32             flags;
+    u64             tag;
+} obj3D_t;
+
+extern const sceneinfo_t scene_bird;
+extern const sceneinfo_t scene_mario;
+
 extern obj3D_t* pyramid_3D;
 extern obj3D_t* terrain_3D;
 extern obj3D_t* wall_3D;
 
-extern obj3D_t objects3D[];
+extern obj3D_t objects3D[6];
+extern obj3D_t objects3D2[5];
 
 extern const f32 wall_vtx_uv[30];
 extern const f32 wall2_vtx_uv[120];
 extern const mat4_t wall2_transform;
 
-obj3D_t* getObjectByTag3D(tag objtag);
+obj3D_t* getObjectByTag3D(tag objtag, obj3D_t* objects, u32 len);
 
 vec3f_t* parseStl(const char* filename, u32* numvtx, u32 color);
 

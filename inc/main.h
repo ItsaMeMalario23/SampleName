@@ -5,8 +5,8 @@
 
 #define R_DEBUG
 #define RDEBUG_BREAK_CUSTOM
-//#define RDEBUG_BREAK_GCC
-//#define RDEBUG_BREAK_DBREAK
+
+// #define DEBUG_WIREFRAMES
 
 #define BLACK   0x000000ff
 #define WHITE   0xffffffff
@@ -44,18 +44,6 @@ typedef struct context_s {
     u32             height;
 } context_t;
 
-typedef struct vec2f_s {
-    f32 x;
-    f32 y;
-} vec2f_t;
-
-typedef struct vec3f_s {
-    f32 x;
-    f32 y;
-    f32 z;
-    u32 pad;    /* padding for 64-bit alignment */
-} vec3f_t;
-
 typedef struct asciidata_s {
     f32 r, g, b, a;
     f32 x, y;
@@ -76,6 +64,25 @@ typedef struct gameobj_s {
     asciidata_t*        data;
     animation_t*        animation;
 } gameobj_t;
+
+typedef struct vec2f_s {
+    f32 x;
+    f32 y;
+} vec2f_t;
+
+typedef struct vec3f_s {
+    f32 x;
+    f32 y;
+    f32 z;
+    u32 pad;    /* padding for 64-bit alignment */
+} vec3f_t;
+
+typedef struct mat4_s {
+    f32 m11, m12, m13, m14;
+    f32 m21, m22, m23, m24;
+    f32 m31, m32, m33, m34;
+    f32 m41, m42, m43, m44;
+} mat4_t;
 
 extern u32 f_int3;
 

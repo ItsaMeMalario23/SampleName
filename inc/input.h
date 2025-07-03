@@ -3,16 +3,16 @@
 
 #include <main.h>
 
-#define NUM_KEYS                    400
+#define NUM_KEYS                    (400u)
 
 // mouse input modes
 #define MOUSE_MODE_STD              (0u)
 #define MOUSE_DISABLE_ALL           (1u << 0)
-#define MOUSE_DISABLE_MOTION        (1u << 0)
-#define MOUSE_DISABLE_WHEEL         (1u << 1)
-#define MOUSE_DISABLE_BUTTONS       (1u << 2)
-#define MOUSE_DISABLE_BUTTON_UP     (1u << 3)
-#define MOUSE_SEPARATE_WHEEL        (1u << 4)
+#define MOUSE_DISABLE_MOTION        (1u << 1)
+#define MOUSE_DISABLE_WHEEL         (1u << 2)
+#define MOUSE_DISABLE_BUTTONS       (1u << 3)
+#define MOUSE_DISABLE_BUTTON_UP     (1u << 4)
+#define MOUSE_SEPARATE_WHEEL        (1u << 5)
 
 // bitmasks to check input mode
 #define MMASK_DISABLE_MOTION        (MOUSE_DISABLE_ALL | MOUSE_DISABLE_MOTION)

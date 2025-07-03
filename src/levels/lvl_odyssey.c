@@ -5,10 +5,10 @@
 #include <render/camera.h>
 #include <debug/rdebug.h>
 
-#define EXIT_1  (0u)
-#define EXIT_2  (0u)
-#define EXIT_3  (0u)
-#define EXIT_4  (0u)
+#define EXIT_1  (3u)
+#define EXIT_2  (3u)
+#define EXIT_3  (3u)
+#define EXIT_4  (3u)
 
 #define MOVE_PLAYER         (1.2f)
 #define MOUSE_SENSITIVITY   (0.06f)
@@ -135,10 +135,10 @@ static u32 init(void* restrict data)
     setCameraPosition(camera, 0.0f, 0.5f, 2.0f);
     cameraUpdate(camera);
     
-    player = getObjectByTag3D(TAG_PLAYER);
-    wall = getObjectByTag3D(TAG_WALL);
-    wall2 = getObjectByTag3D(TAG_WALL2);
-    jet = getObjectByTag3D(TAG_JET);
+    player = getObjectByTag3D(TAG_PLAYER, objects3D, 6);
+    wall = getObjectByTag3D(TAG_WALL, objects3D, 6);
+    wall2 = getObjectByTag3D(TAG_WALL2, objects3D, 6);
+    jet = getObjectByTag3D(TAG_JET, objects3D, 6);
 
     rAssert(player);
     rAssert(wall);

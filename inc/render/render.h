@@ -14,6 +14,7 @@
 #define RENDER_MODE_UI_STATIC       (1u << 5)
 #define RENDER_MODE_UI_DYNAMIC      (1u << 6)
 #define RENDER_MODE_HITBOXES        (1u << 7)
+#define RENDER_MODE_DEBUG_3D        (1u << 8)
 
 #define RENDER_MODE_2D_HYBRID       (RENDER_MODE_2D | RENDER_MODE_LAYERED)
 #define RENDER_MODE_3D_HYBRID       (RENDER_MODE_2D | RENDER_MODE_3D)
@@ -68,6 +69,7 @@ SDL_GPUGraphicsPipeline* renderInit2DPipeline(SDL_GPUDevice* dev, SDL_GPUShader*
 SDL_GPUGraphicsPipeline* renderInitBoxPipeline(SDL_GPUDevice* dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
 SDL_GPUGraphicsPipeline* renderInit3DPipeline(context_t* restrict con, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTexture** depthtex, SDL_GPUTextureFormat fmt);
 SDL_GPUGraphicsPipeline* renderInitOdysseyPipeline(SDL_GPUDevice* dev, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
+SDL_GPUGraphicsPipeline* renderInit3DDebugPipeline(context_t* restrict con, SDL_GPUShader* restrict vert, SDL_GPUShader* restrict frag, SDL_GPUTextureFormat fmt);
 SDL_GPUTexture* renderInitAsciiTexture(context_t* restrict con, const char* filename, SDL_GPUSampler** sampler);
 SDL_GPUTexture* renderInitOdysseyTexture(context_t* restrict con, SDL_GPUSampler** sampler, SDL_GPUTextureFormat rfmt, u32 w, u32 h);
 
