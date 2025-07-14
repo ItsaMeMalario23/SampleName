@@ -135,4 +135,4 @@ static void lvlexit(void)
     SDL_Log("[INFO] Mario level exit");
 }
 
-level_t lvl_mario = { "Mario", init, update, lvlexit, 0, RENDER_MODE_2D, {EXIT_1, EXIT_2, EXIT_3, EXIT_4} };
+level_t lvl_mario = { "Mario", init, update, lvlexit, NULL, 0, RENDER_MODE_2D, {EXIT_1, EXIT_2, EXIT_3, EXIT_4} };

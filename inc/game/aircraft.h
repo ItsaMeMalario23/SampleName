@@ -8,8 +8,15 @@
 #define radf( x ) ((x) * SDL_PI_F / 180.0f)
 #define degf( x ) ((x) * 180.0f / SDL_PI_F)
 
+//
+//  Global constants
+//
 #define FIXED_DT            (0.016666666f)
 //#define FIXED_DT            (0.008333333f)
+
+#define GRAVITY             (-9.81f)
+
+#define FLOOR_PLANE         (0.0f)
 
 #define THRUST_SET_MAX      (6u)
 
@@ -74,7 +81,7 @@ typedef struct aircraft_s {
 extern aircraft_t jet_1;
 
 void jetHandleThrustSetting(aircraft_t* jet, instate_t* input);
-void jetHandleCtrSurfaceInput(aircraft_t* restrict jet, const instate_t* restrict input);
+void jetHandleCtrlSurfaceInput(aircraft_t* restrict jet, const instate_t* restrict input);
 
 void jetGetLocalAxes(aircraft_t* jet);
 

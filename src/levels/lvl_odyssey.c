@@ -43,7 +43,7 @@ static inline void initOdyssey(u32 mode)
 
     lvl_mario.init(NULL);
 
-    rSetup3DVtxBuf(objects3D, 6);
+    rSetup3DVtxBuf(lvl_odyssey.scene3D);
 
     if (mode)
         wall2->flags &= ~OBJECT_VISIBLE;
@@ -59,7 +59,7 @@ static inline void exitOdyssey(void)
 
     renderMode(RENDER_MODE_3D);
 
-    rSetup3DVtxBuf(objects3D, 6);
+    rSetup3DVtxBuf(lvl_odyssey.scene3D);
 
     wall->flags |= OBJECT_VISIBLE;
     
@@ -124,6 +124,8 @@ static SDL_AppResult rotateCamera(f32 x, f32 y)
 //
 static u32 init(void* restrict data)
 {
+    rAssert(lvl_odyssey.scene3D);
+
     input = getInputState();
     mouse = getMouse();
     context = getContext();
@@ -135,10 +137,10 @@ static u32 init(void* restrict data)
     setCameraPosition(camera, 0.0f, 0.5f, 2.0f);
     cameraUpdate(camera);
     
-    player = getObjectByTag3D(TAG_PLAYER, objects3D, 6);
-    wall = getObjectByTag3D(TAG_WALL, objects3D, 6);
-    wall2 = getObjectByTag3D(TAG_WALL2, objects3D, 6);
-    jet = getObjectByTag3D(TAG_JET, objects3D, 6);
+    player = getObjectByTag3D(TAG_PLAYER, lvl_odyssey.scene3D);
+    wall = getObjectByTag3D(TAG_WALL, lvl_odyssey.scene3D);
+    wall2 = getObjectByTag3D(TAG_WALL2, lvl_odyssey.scene3D);
+    jet = getObjectByTag3D(TAG_JET, lvl_odyssey.scene3D);
 
     rAssert(player);
     rAssert(wall);
@@ -153,7 +155,7 @@ static u32 init(void* restrict data)
     jet->flags &= ~OBJECT_INCOMPLETE;
     jet->flags |= OBJECT_HEAP_ALLOC;
 
-    rSetup3DVtxBuf(objects3D, 6);
+    rSetup3DVtxBuf(lvl_odyssey.scene3D);
 
     rSetupStaticUIBuf(&(uiobject_t) {(asciidata_t[]) {{1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f / 80.0f, 'x' - 32}}, 1}, 1);
 
@@ -219,4 +221,4 @@ static void lvlexit(void)
     SDL_SetWindowRelativeMouseMode(context->window, false);
 }
 
-level_t lvl_odyssey = { "Odyssey", init, update, lvlexit, 0, RENDER_MODE_3D | RENDER_MODE_UI_STATIC, {EXIT_1, EXIT_2, EXIT_3, EXIT_4} };
+level_t lvl_odyssey = { "Odyssey", init, update, lvlexit, NULL, 0, RENDER_MODE_3D | RENDER_MODE_UI_STATIC, {EXIT_1, EXIT_2, EXIT_3, EXIT_4} };

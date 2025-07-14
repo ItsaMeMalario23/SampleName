@@ -135,7 +135,7 @@ void __setAllocated(void* ptr, size_t size)
 
 // Remove entry from buffer if size 0
 // Find index of entry if size > 0
-int __resetAllocated(void* ptr, size_t size)
+int __resetAllocated(const void* ptr, size_t size)
 {
     if (!ptr || g_mTrackLaw < 2)
     {
@@ -182,7 +182,7 @@ int __resetAllocated(void* ptr, size_t size)
 
 // Append ptr to free buffer and increase buffer size if necessary
 // Same for freeInfo buffer if memtrack is in debug law
-void __appendFree(void* ptr, const char* filename, unsigned linenum)
+void __appendFree(const void* ptr, const char* filename, unsigned linenum)
 {
     if (!ptr || !g_memFreeBuf || g_mTrackLaw < 3)
     {
@@ -225,7 +225,7 @@ void __appendFree(void* ptr, const char* filename, unsigned linenum)
         g_freeInfoBuf[g_freeBufIdx] = str;
     }
     
-    g_memFreeBuf[g_freeBufIdx++] = ptr;
+    g_memFreeBuf[g_freeBufIdx++] = (void*) ptr;
 
     return;
 
@@ -243,7 +243,7 @@ void __appendFree(void* ptr, const char* filename, unsigned linenum)
 }
 
 // Return index if ptr is in free buffer
-int __isFree(void* ptr)
+int __isFree(const void* ptr)
 {
     if (!ptr || !g_memFreeBuf || g_mTrackLaw < 3)
     {
@@ -532,7 +532,7 @@ void* memtrackReallocate_Implementation(void* ptr, size_t size)
     return NULL;
 }
 
-int memtrackFree_Implementation(void* ptr, const char* filename, unsigned linenum)
+int memtrackFree_Implementation(const void* ptr, const char* filename, unsigned linenum)
 {
     if (g_mTrackLaw == MTRACK_UNINITIALIZED)
     {
@@ -548,7 +548,7 @@ int memtrackFree_Implementation(void* ptr, const char* filename, unsigned linenu
     {
         __appendFree(ptr, NULL, 0);
 
-        free(ptr);
+        free((void*) ptr);
 
         return 2;
     }
@@ -722,7 +722,7 @@ void* memtrackReallocate_Debug(void* ptr, size_t size, const char* filename, uns
     return tmp;
 }
 
-void memtrackFree_Debug(void* ptr, const char* filename, unsigned linenum)
+void memtrackFree_Debug(const void* ptr, const char* filename, unsigned linenum)
 {
     int ret = memtrackFree_Implementation(ptr, filename, linenum);
 

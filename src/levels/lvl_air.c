@@ -14,6 +14,14 @@
 
 #define MOUSE_SENSITIVITY   (0.04f)
 
+#define C_NEARPLANE         (1.0f)
+#define C_FARPLANE          (1000.0f)
+#define C_OFFSET            (7.0f)
+#define C_OFFSET_INCR       (0.5f)
+
+#define COLOR_JET           0xA1A1A1FF
+#define COLOR_TERRAIN       0x00AA00FF
+
 static aircraft_t* jet = &jet_1;
 
 static context_t* context;
@@ -21,6 +29,9 @@ static instate_t* input;
 static mouseinput_t* mouse;
 static camera_t* camera;
 
+//
+//  Local functions
+//
 static SDL_AppResult rotateCamera(f32 x, f32 y)
 {
     setCameraRotationDeg(camera, camera->pitch + (-y * MOUSE_SENSITIVITY), camera->yaw + (-x * MOUSE_SENSITIVITY));
@@ -29,20 +40,37 @@ static SDL_AppResult rotateCamera(f32 x, f32 y)
 
 static SDL_AppResult offsetCamera(f32 f)
 {
-    camera->offset -= f * 0.5f;
+    camera->offset -= f * C_OFFSET_INCR;
     camera->flags |= CAMERA_NEED_REBUILD;
 
     return SDL_APP_CONTINUE;
 }
 
-static inline u32 setupJet(aircraft_t* jet)
+static inline u32 setupTerrain(void)
 {
-    jet->model = getObjectByTag3D(jet->tag, objects3D2, 5);
+    obj3D_t* tmp = getObjectByTag3D(TAG_TERRAIN, lvl_air.scene3D);
+
+    rAssert(tmp);
+
+    if (tmp->flags & OBJECT_INCOMPLETE) {
+        if (!(tmp->vtxbuf = parseStl("terrain", &tmp->numvtx, COLOR_TERRAIN)))
+            return LVL_INIT_FAILURE;
+    }
+
+    tmp->flags &= ~OBJECT_INCOMPLETE;
+    tmp->flags |= OBJECT_HEAP_ALLOC;
+
+    return 0;
+}
+
+static inline u32 setupJet(aircraft_t* restrict jet)
+{
+    jet->model = getObjectByTag3D(jet->tag, lvl_air.scene3D);
 
     rAssert(jet->model);
 
     if (jet->model->flags & OBJECT_INCOMPLETE) {
-        if (!(jet->model->vtxbuf = parseStl("jet-blend", &jet->model->numvtx, 0xA1A1A1FF)))
+        if (!(jet->model->vtxbuf = parseStl("jet-blend", &jet->model->numvtx, COLOR_JET)))
             return LVL_INIT_FAILURE;
     }
 
@@ -54,11 +82,26 @@ static inline u32 setupJet(aircraft_t* jet)
     return 0;
 }
 
+static inline void setupCamera(camera_t* restrict cam)
+{
+    cameraInit(cam);
+    setCameraPosition(cam, 2.0f, 0.5f, 4.0f);
+
+    cam->flags |= CAMERA_THIRD_PERSON | CAMERA_NEED_REBUILD;
+    cam->offset = C_OFFSET;
+    cam->nearplane = C_NEARPLANE;
+    cam->farplane = C_FARPLANE;
+
+    cameraUpdate(cam);
+}
+
 //
 //  Level init
 //
 static u32 init(void* restrict data)
 {
+    rAssert(lvl_air.scene3D);
+
     input = getInputState();
     mouse = getMouse();
     context = getContext();
@@ -66,16 +109,15 @@ static u32 init(void* restrict data)
 
     SDL_SetWindowRelativeMouseMode(context->window, true);
 
-    cameraInit(camera);
-    setCameraPosition(camera, 2.0f, 0.5f, 4.0f);
-    camera->flags |= CAMERA_THIRD_PERSON | CAMERA_NEED_REBUILD;
-    camera->offset = 7.0f;
-    cameraUpdate(camera);
+    setupCamera(camera);
 
     if (setupJet(jet))
         return LVL_INIT_FAILURE;
 
-    rSetup3DVtxBuf(objects3D2, 5);
+    if (setupTerrain())
+        return LVL_INIT_FAILURE;
+
+    rSetup3DVtxBuf(lvl_air.scene3D);
     
     mouse->mode = MOUSE_MODE_STD;
     mouse->motion = rotateCamera;
@@ -101,10 +143,10 @@ static u32 update(f64 dt)
         return LEVEL_EXIT_1;
     }
 
-    jetHandleThrustSetting(jet, input);
-    jetHandleCtrSurfaceInput(jet, input);
-    
     jetGetLocalAxes(jet);
+
+    jetHandleThrustSetting(jet, input);
+    jetHandleCtrlSurfaceInput(jet, input);
 
     jetComputeThrust(jet, t);
     jetHandleLift(jet, t);
@@ -115,6 +157,15 @@ static u32 update(f64 dt)
 
     setCameraPosition(camera, jet->pos.x, jet->pos.y + 0.5f, jet->pos.z);
     cameraUpdate(camera);
+
+    f32* ptr = rDebugVectors(1);
+
+    ptr[0] = jet->pos.x;
+    ptr[1] = jet->pos.y;
+    ptr[2] = jet->pos.z;
+    ptr[4] = jet->pos.x + jet->v.x;
+    ptr[5] = jet->pos.y + jet->v.y;
+    ptr[6] = jet->pos.z + jet->v.z;
 
     t = 0.0f;
 
@@ -130,4 +181,4 @@ static void lvlexit(void)
     SDL_SetWindowRelativeMouseMode(context->window, false);
 }
 
-level_t lvl_air = { "Air", init, update, lvlexit, 0, RENDER_MODE_3D | RENDER_MODE_DEBUG_3D, {EXIT_1, EXIT_2, EXIT_3, EXIT_4} };
+level_t lvl_air = { "Air", init, update, lvlexit, NULL, 0, RENDER_MODE_3D | RENDER_MODE_DEBUG_3D | RENDER_MODE_DEBUG_VEC, {EXIT_1, EXIT_2, EXIT_3, EXIT_4} };

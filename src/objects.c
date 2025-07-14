@@ -7,6 +7,7 @@
 #include <objects.h>
 #include <algebra.h>
 #include <input.h>
+#include <levels.h>
 #include <render/render.h>
 #include <render/camera.h>
 #include <debug/rdebug.h>
@@ -422,8 +423,6 @@ static obj3D_t pyramid_obj = {
     .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER
 };
 
-obj3D_t* pyramid_3D = &pyramid_obj;
-
 //
 
 static const vec3f_t terrain_vtx[24] = {
@@ -445,8 +444,6 @@ static obj3D_t terrain_obj = {
     .vtxbuf = terrain_vtx,
     .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER
 };
-
-obj3D_t* terrain_3D = &terrain_obj;
 
 //
 
@@ -472,8 +469,6 @@ static obj3D_t wall_obj = {
     .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER,
     .pos = {-4.0f, 0, -4.0f}
 };
-
-obj3D_t* wall_3D = &wall_obj;
 
 const f32 wall_vtx_uv[30] = {
     0, 0, 0, 0, 1,   1.92f, 0, 0, 1, 1,   1.92f, 1.08f, 0, 1, 0,
@@ -515,8 +510,16 @@ static obj3D_t player_obj = {
     .pos = {0, 0, 2.0f}
 };
 
-// array
-obj3D_t objects3D[6] = {{
+static char* buf3D;
+
+obj3D_t* scene3D_1;
+obj3D_t* scene3D_2;
+
+void init3DScenes(void)
+{
+    rAssert(!buf3D);
+
+    obj3D_t objects3D_1[6] = {{
         .numvtx = sizeof(terrain_vtx) / sizeof(vec3f_t),
         .vtxbuf = terrain_vtx,
         .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER
@@ -546,10 +549,9 @@ obj3D_t objects3D[6] = {{
         .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER,
         .pos = {-7.0f, 0, 0},
         .tag = TAG_WALL2
-    }
-};
+    }};
 
-obj3D_t objects3D2[5] = {{
+    obj3D_t objects3D_2[6] = {{
         .numvtx = sizeof(terrain_vtx) / sizeof(vec3f_t),
         .vtxbuf = terrain_vtx,
         .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER
@@ -572,16 +574,37 @@ obj3D_t objects3D2[5] = {{
         .numvtx = sizeof(wall2_vtx) / sizeof(vec3f_t),
         .vtxbuf = wall2_vtx,
         .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER,
-        .pos = {-7.0f, 0, 0},
+        .pos = {-7.0f, 0.0f, 0.0f},
         .tag = TAG_WALL2
-    }
-};
+    }, {
+        .flags = OBJECT_NEED_REBUILD | OBJECT_VISIBLE | OBJECT_RENDER | OBJECT_INCOMPLETE,
+        .pos = {0.0f, -55.0f, 0.0f},
+        .tag = TAG_TERRAIN
+    }};
 
-obj3D_t* getObjectByTag3D(tag objtag, obj3D_t* objects, u32 len)
+    buf3D = (char*) memAlloc(sizeof(objects3D_1) + sizeof(objects3D_2) + 16);
+
+    *((u64*) buf3D) = sizeof(objects3D_1) / sizeof(obj3D_t);
+
+    scene3D_1 = (obj3D_t*) (buf3D + 8);
+
+    memcpy(scene3D_1, objects3D_1, sizeof(objects3D_1));
+
+    *((u64*) (buf3D + sizeof(objects3D_1) + 8)) = sizeof(objects3D_2) / sizeof(obj3D_t);
+
+    scene3D_2 = (obj3D_t*) (buf3D + sizeof(objects3D_1) + 16);
+
+    memcpy(scene3D_2, objects3D_2, sizeof(objects3D_2));
+
+    lvl_odyssey.scene3D = scene3D_1;
+    lvl_air.scene3D = scene3D_2;
+}
+
+obj3D_t* getObjectByTag3D(tag objtag, obj3D_t* scene)
 {
-    const obj3D_t* bound = objects + len;
+    const obj3D_t* bound = scene + *(((u32*) scene) - 2);
 
-    for (obj3D_t* i = objects; i < bound; i++) {
+    for (obj3D_t* i = scene; i < bound; i++) {
         if (i->tag == objtag)
             return i;
     }
@@ -621,7 +644,7 @@ vec3f_t* parseStl(const char* filename, u32* numvtx, u32 color)
     rAssert(filename);
     rAssert(numvtx);
 
-    char buf[65535];
+    char buf[131072];
 
     static context_t* context;
 
@@ -640,7 +663,7 @@ vec3f_t* parseStl(const char* filename, u32* numvtx, u32 color)
         return NULL;
     }
 
-    size_t len = fread(buf, 1, 65535, fd);
+    size_t len = fread(buf, 1, 131072, fd);
 
     if (!feof(fd)) {
         SDL_Log("[ERROR] Failed to parse STL: file too big");
@@ -702,4 +725,29 @@ vec3f_t* parseStl(const char* filename, u32* numvtx, u32 color)
     rAssert(!num);
 
     return ret;
+}
+
+static void cleanup3DScene(obj3D_t* restrict scene)
+{
+    const obj3D_t* bound = scene + *((u64*) scene - 1);
+
+    for (obj3D_t* i = scene; i < bound; i++) {
+        if (i->flags & OBJECT_HEAP_ALLOC) {
+            memFree(i->vtxbuf);
+            i->vtxbuf = NULL;
+        }
+    }
+}
+
+void objectsCleanup(void)
+{
+    if (!buf3D)
+        return;
+
+    cleanup3DScene(scene3D_1);
+    cleanup3DScene(scene3D_2);
+
+    memFree(buf3D);
+
+    buf3D = NULL;
 }

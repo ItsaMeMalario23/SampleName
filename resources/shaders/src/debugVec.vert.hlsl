@@ -5,7 +5,7 @@ cbuffer UniformBlock : register(b0, space1)
 
 cbuffer UniformBlock : register(b1, space1)
 {
-    float4x4 modeltransform : packoffset(c0);
+    float4 vec[8] : packoffset(c0);
 };
 
 struct ret
@@ -14,31 +14,28 @@ struct ret
     float4 color : TEXCOORD0;
 };
 
-#define LINE_LEN (2.0f)
-
 ret main(uint id : SV_VertexID)
 {
     ret r;
 
-    float4 dir;
+    uint v = id / 2;
 
-    if (id == 0 || id == 1) {
-        dir = float4(LINE_LEN, 0.0f, 0.0f, 1.0f);
-        r.color = float4(1.0f, 0.0f, 0.0f, 1.0f);
-    } else if (id == 2 || id == 3) {
-        dir = float4(0.0f, LINE_LEN, 0.0f, 1.0f);
+    if (v == 0) {
+        r.color = float4(1.0f, 0.0f, 1.0f, 1.0f);
+    } else if (v == 1) {
         r.color = float4(0.0f, 1.0f, 0.0f, 1.0f);
-    } else {
-        dir = float4(0.0f, 0.0f, LINE_LEN, 1.0f);
+    } else if (v == 2) {
         r.color = float4(0.0f, 0.0f, 1.0f, 1.0f);
+    } else {
+        r.color = float4(1.0f, 0.0f, .0f, 1.0f);
     }
 
     float4 pos;
 
     if (id % 2 == 0) {
-        pos = mul(modeltransform, float4(0.0f, 0.0f, 0.0f, 1.0f));
+        pos = float4(vec[v].xyz, 1.0f);
     } else {
-        pos = mul(modeltransform, dir);
+        pos = float4(vec[v + 1].xyz, 1.0f);
     }
 
     r.pos = mul(rendermatrix, pos);

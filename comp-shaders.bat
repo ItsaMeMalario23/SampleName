@@ -39,3 +39,7 @@ shadercross "resources/shaders/src/odyssey.frag.hlsl" -o "resources/shaders/comp
 shadercross "resources/shaders/src/debug3D.vert.hlsl" -o "resources/shaders/comp/SPV/debug3D.vert.spv"
 shadercross "resources/shaders/src/debug3D.vert.hlsl" -o "resources/shaders/comp/MSL/debug3D.vert.msl"
 shadercross "resources/shaders/src/debug3D.vert.hlsl" -o "resources/shaders/comp/DXIL/debug3D.vert.dxil"
+
+shadercross "resources/shaders/src/debugVec.vert.hlsl" -o "resources/shaders/comp/SPV/debugVec.vert.spv"
+shadercross "resources/shaders/src/debugVec.vert.hlsl" -o "resources/shaders/comp/MSL/debugVec.vert.msl"
+shadercross "resources/shaders/src/debugVec.vert.hlsl" -o "resources/shaders/comp/DXIL/debugVec.vert.dxil"

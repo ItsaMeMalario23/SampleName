@@ -15,6 +15,7 @@
 #define RENDER_MODE_UI_DYNAMIC      (1u << 6)
 #define RENDER_MODE_HITBOXES        (1u << 7)
 #define RENDER_MODE_DEBUG_3D        (1u << 8)
+#define RENDER_MODE_DEBUG_VEC       (1u << 9)
 
 #define RENDER_MODE_2D_HYBRID       (RENDER_MODE_2D | RENDER_MODE_LAYERED)
 #define RENDER_MODE_3D_HYBRID       (RENDER_MODE_2D | RENDER_MODE_3D)
@@ -90,7 +91,7 @@ void renderResetBuffers(void);
 void renderCleanup(void);
 
 //  Objects
-void rSetup3DVtxBuf(obj3D_t* objects, u32 numobjs);
+void rSetup3DVtxBuf(obj3D_t* objects);
 void rSetupStaticUIBuf(uiobject_t* objects, u32 numobjs);
 void rTransferDynUIBuf(const asciidata_t* data, u32 len);
 void rAdd3DObjectToRenderBuf(const obj3D_t* restrict object);
@@ -98,5 +99,6 @@ void rAddObjectToRenderBuf(u32 object);
 void rAddObjectToLayer(u32 object, u32 layer);
 void rAddHitbox(gameobj_t* object);
 void rRemoveHitbox(gameobj_t* object);
+f32* rDebugVectors(u32 numvec);
 
 #endif

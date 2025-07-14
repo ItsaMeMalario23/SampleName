@@ -9,6 +9,9 @@
 
 #define CAM_THIRD_PERS_OFFS (1.2f)
 
+#define CAM_STD_NEARPLANE   (0.1f)
+#define CAM_STD_FARPLANE    (100.0f)
+
 #define CAMERA_NEED_REBUILD (1u << 0)
 #define CAMERA_THIRD_PERSON (1u << 1)
 

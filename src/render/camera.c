@@ -34,8 +34,8 @@ void cameraInit(camera_t* const camera)
     camera->pos = (vec3f_t) { 0.0f, 0.0f, 0.0f };
     camera->pitch = 0.0f;
     camera->yaw = 0.0f;
-    camera->nearplane = 0.1f;
-    camera->farplane = 500.0f;
+    camera->nearplane = CAM_STD_NEARPLANE;
+    camera->farplane = CAM_STD_FARPLANE;
     camera->aspect = (f32) context->width / (f32) context->height;
     camera->fov = radf(75.0f);
     camera->offset = CAM_THIRD_PERS_OFFS;

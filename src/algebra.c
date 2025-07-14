@@ -177,13 +177,14 @@ inline mat4_t m4Camera(vec3f_t position, vec3f_t direction, vec3f_t camZ)
 
 inline mat4_t m4Projection(f32 fov, f32 aspect, f32 near, f32 far)
 {
-    f32 f = 1.0f / SDL_tanf(fov * 0.5f);
+    register f32 f = 1.0f / SDL_tanf(fov * 0.5f);
+    register f32 d = far - near;
 
     return (mat4_t) {
         f / aspect, 0, 0, 0,
         0, f, 0, 0,
-        0, 0, -(far + near) / (far - near), -1,
-        0, 0, -(2.0f * far * near) / (far - near), 0
+        0, 0, -(far + near) / d, -1.0f,
+        0, 0, -(2.0f * far * near) / d, 0
     };
 }
 

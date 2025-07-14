@@ -8,14 +8,14 @@
 aircraft_t jet_1 = {
     .tag = TAG_JET,
     .abthrust_c = 1.4f,
-    .stdthrust_c = {0.0f, 5.8f, 6.0f, 7.2f, 8.4f, 9.6f},
-    .stdlift_c = {0.1f, 0.12f, 0.14f, 0.16f},
-    .drag_c = {0.02f, 0.04f, 0.06f, 0.1f},
+    .stdthrust_c = { 0.0f, 5.8f, 6.0f, 7.2f, 8.4f, 9.6f },
+    .stdlift_c = { 0.1f, 0.12f, 0.14f, 0.16f },
+    .drag_c = { 0.02f, 0.04f, 0.06f, 0.1f },
     .thrustadjrate_c = 0.01f,
     .ctrlsurfspeed_c = 1,
-    .stallspeed_c = {3.0f, 2.6f, 2.2f, 1.8f},
-    .stallaoa_c = {radf(20.0f), radf(20.0f), radf(20.0f), radf(20.0f)},
-    .maxspeed_c = {6.0f, 5.5f, 5.0f, 4.5f},
+    .stallspeed_c = { 3.0f, 2.6f, 2.2f, 1.8f },
+    .stallaoa_c = { radf(20.0f), radf(20.0f), radf(20.0f), radf(20.0f) },
+    .maxspeed_c = { 6.0f, 5.5f, 5.0f, 4.5f },
     .maxtemp_c = 700
 };
 
@@ -53,7 +53,7 @@ inline void jetHandleThrustSetting(aircraft_t* jet, instate_t* input)
     }
 }
 
-inline void jetHandleCtrSurfaceInput(aircraft_t* restrict jet, const instate_t* restrict input)
+inline void jetHandleCtrlSurfaceInput(aircraft_t* restrict jet, const instate_t* restrict input)
 {
     // reset control surfaces
     if (jet->rudder > 0)
@@ -142,13 +142,36 @@ inline void jetComputeThrust(aircraft_t* jet, f32 dt)
     jet->v = v3Add(jet->v, f);
 }
 
+static inline f32 getAirfoilLiftCoeff(f32 aoa)
+{
+    if (aoa > 90.0f || aoa < -90.0f)
+        return 0.0f;
+
+    return (aoa / 180.0f) + 0.2f;
+}
+
+static inline f32 getAirfoilDragCoeff(f32 aoa)
+{
+    if (aoa < 0.0f)
+        aoa = -aoa;
+
+    return aoa / 900.0f;
+}
+
 inline void jetHandleLift(aircraft_t* jet, f32 dt)
 {
     rAssert(jet->flaps < 4);
 
     // airspeed
-    register f32 airspeed = v3Len(jet->v);
+    vec3f_t dir = v3Normalize(jet->v);
+
+    register f32 airspeed = SDL_fabsf(v3Dot(jet->v, jet->local[LAXIS_FORWARD]));
+
+    //register f32 airspeed = v3Len(jet->v);
     jet->airspeed = airspeed;
+
+    // gravity
+    jet->v = v3Add(jet->v, (vec3f_t) { 0.0f, GRAVITY * dt, 0.0f });
 
     if (airspeed < EPSILON) {
         jet->lift = 0.0f;
@@ -156,25 +179,22 @@ inline void jetHandleLift(aircraft_t* jet, f32 dt)
     }
 
     // lift
-    vec3f_t dir = v3Normalize(jet->v);
-    vec3f_t up = jet->local[LAXIS_UP];
+    f32 aoa = -SDL_atan2f(jet->local[LAXIS_UP].z, jet->local[LAXIS_UP].y);
+    jet->aoa = SDL_fmodf(degf(aoa), 180.0f);
 
-    f32 aoa = SDL_atan2f(v3Dot(dir, jet->local[LAXIS_FORWARD]), v3Dot(dir, up));
-    jet->aoa = degf(aoa);
-
-    f32 cl = jet->stdlift_c[jet->flaps] * (aoa / jet->stallaoa_c[jet->flaps]);
+    //f32 cl = jet->stdlift_c[jet->flaps] * (aoa / jet->stallaoa_c[jet->flaps]);
 
     airspeed *= airspeed;
 
-    f32 lift = 0.01f * airspeed * cl;
+    f32 lift = 0.05f * airspeed * getAirfoilLiftCoeff(jet->aoa);
     jet->lift = lift;
 
-    vec3f_t liftf = v3Scale(up, lift * dt);
+    vec3f_t liftf = v3Scale(jet->local[LAXIS_UP], lift * dt);
 
     jet->v = v3Add(jet->v, liftf);
 
     // drag
-    f32 drag = 0.5f * airspeed * jet->drag_c[jet->flaps];
+    f32 drag = 0.5f * airspeed * jet->drag_c[jet->flaps] + getAirfoilDragCoeff(jet->aoa);
     vec3f_t dragf = v3Scale(dir, -drag * dt);
 
     jet->v = v3Add(jet->v, dragf);
@@ -186,12 +206,12 @@ inline void jetUpdatePosition(aircraft_t* jet, f32 dt)
     f32 pitch = radf((f32) jet->elevator * dt * 0.25f);
     f32 roll = radf((f32) jet->ailerons * dt * 0.25f);
 
-    quat_t dy = qFromAxis(jet->local[LAXIS_UP], yaw);
-    quat_t dp = qFromAxis(jet->local[LAXIS_RIGHT], pitch);
-    quat_t dr = qFromAxis(jet->local[LAXIS_FORWARD], roll);
+    quat_t qdy = qFromAxis(jet->local[LAXIS_UP], yaw);
+    quat_t qdp = qFromAxis(jet->local[LAXIS_RIGHT], pitch);
+    quat_t qdr = qFromAxis(jet->local[LAXIS_FORWARD], roll);
 
     // delta rotation roll -> pitch -> yaw
-    quat_t d = qMul(qMul(dr, dp), dy);
+    quat_t d = qMul(qMul(qdr, qdp), qdy);
 
     jet->attitude = qMul(jet->attitude, d);
     jet->attitude = qNormalize(jet->attitude);
@@ -199,8 +219,17 @@ inline void jetUpdatePosition(aircraft_t* jet, f32 dt)
     jet->model->transform = qToM4(jet->attitude);
 
     jet->pos.x += jet->v.x * dt;
-    jet->pos.y += jet->v.y * dt;
     jet->pos.z += jet->v.z * dt;
+
+    f32 dy = jet->v.y * dt;
+
+    // ground collision
+    if (jet->pos.y + dy > FLOOR_PLANE) {
+       jet->pos.y += jet->v.y * dt;
+    } else {
+        jet->pos.y = FLOOR_PLANE;
+        jet->v.y = 0.0f;
+    }
 
     jet->model->transform.m41 = jet->pos.x;
     jet->model->transform.m42 = jet->pos.y;

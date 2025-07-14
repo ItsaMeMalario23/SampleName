@@ -2,6 +2,7 @@
 #define LEVELS_H
 
 #include <main.h>
+#include <objects.h>
 
 #define LEVEL_CONTINUE      (0u)
 #define LEVEL_PAUSE         (1u)
@@ -22,6 +23,7 @@ typedef struct level_s {
     levelInit_f     init;
     levelUpdate_f   update;
     levelExit_f     exit;
+    obj3D_t*        scene3D;        // only for 3D levels
     u32             flags;
     u32             rendermode;
     u8              exits[8];

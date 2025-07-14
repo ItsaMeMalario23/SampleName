@@ -94,13 +94,13 @@ void* memtrackAllocate_Implementation(size_t size);
 void* memtrackAllocateInitialize_Implementation(size_t size, size_t count);
 void* memtrackAllocateSet_Implementation(size_t size, unsigned char value);
 void* memtrackReallocate_Implementation(void* ptr, size_t size);
-int   memtrackFree_Implementation(void* ptr, const char* filename, unsigned linenum);
+int   memtrackFree_Implementation(const void* ptr, const char* filename, unsigned linenum);
 
 void* memtrackAllocate_Debug(size_t size, const char* filename, unsigned linenum);
 void* memtrackAllocateInitialize_Debug(size_t size, size_t count, const char* filename, unsigned linenum);
 void* memtrackAllocateSet_Debug(size_t size, unsigned char value, const char* filename, unsigned linenum);
 void* memtrackReallocate_Debug(void* ptr, size_t size, const char* filename, unsigned linenum);
-void  memtrackFree_Debug(void* ptr, const char* filename, unsigned linenum);
+void  memtrackFree_Debug(const void* ptr, const char* filename, unsigned linenum);
 
 //
 //  Use these functions

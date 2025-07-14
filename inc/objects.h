@@ -17,7 +17,8 @@ typedef enum tag_e {
     TAG_PLAYER,
     TAG_WALL,
     TAG_WALL2,
-    TAG_JET
+    TAG_JET,
+    TAG_TERRAIN
 } tag;
 
 typedef struct obj3D_s {
@@ -36,19 +37,18 @@ typedef struct obj3D_s {
 extern const sceneinfo_t scene_bird;
 extern const sceneinfo_t scene_mario;
 
-extern obj3D_t* pyramid_3D;
-extern obj3D_t* terrain_3D;
-extern obj3D_t* wall_3D;
-
-extern obj3D_t objects3D[6];
-extern obj3D_t objects3D2[5];
+extern obj3D_t* scene3D_1;
+extern obj3D_t* scene3D_2;
 
 extern const f32 wall_vtx_uv[30];
 extern const f32 wall2_vtx_uv[120];
 extern const mat4_t wall2_transform;
 
-obj3D_t* getObjectByTag3D(tag objtag, obj3D_t* objects, u32 len);
+obj3D_t* getObjectByTag3D(tag objtag, obj3D_t* scene);
 
 vec3f_t* parseStl(const char* filename, u32* numvtx, u32 color);
+
+void init3DScenes(void);
+void objectsCleanup(void);
 
 #endif

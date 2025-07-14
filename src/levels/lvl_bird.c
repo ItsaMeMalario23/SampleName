@@ -96,4 +96,4 @@ static void lvlexit(void)
     SDL_Log("[INFO] Bird level exit");
 }
 
-level_t lvl_bird = { "Bird", init, update, lvlexit, 0, RENDER_MODE_LAYERED, {EXIT_1, EXIT_2, EXIT_3, EXIT_4} };
+level_t lvl_bird = { "Bird", init, update, lvlexit, NULL, 0, RENDER_MODE_LAYERED, {EXIT_1, EXIT_2, EXIT_3, EXIT_4} };

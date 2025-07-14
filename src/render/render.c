@@ -18,6 +18,7 @@ static SDL_GPUGraphicsPipeline* pipeline3D;
 static SDL_GPUGraphicsPipeline* pipelineOdyssey;
 static SDL_GPUGraphicsPipeline* pipelineLayers;
 static SDL_GPUGraphicsPipeline* pipeline3DDebug;
+static SDL_GPUGraphicsPipeline* pipelineDebugVec;
 static SDL_GPUGraphicsPipeline* pipelineHitbox;
 
 // 3D / Odyssey
@@ -77,6 +78,9 @@ static u32 numboxes;
 static instate_t* input;    // TODO remove this
 
 static u32 odmode;
+
+static f32 debugvectors[32];
+static u32 numvectors;
 
 void renderInit(SDL_WindowFlags flags, u32 mode)
 {
@@ -192,12 +196,14 @@ void renderInit(SDL_WindowFlags flags, u32 mode)
         return;
 
     SDL_ReleaseGPUShader(context->dev, vert);
-
     vert = renderLoadShader(context, "debug3D.vert", 0, 2, 0, 0);
-
     pipeline3DDebug = renderInit3DDebugPipeline(context, vert, frag, rfmt);
 
-    if (!pipeline3DDebug)
+    SDL_ReleaseGPUShader(context->dev, vert);
+    vert = renderLoadShader(context, "debugVec.vert", 0, 2, 0, 0);
+    pipelineDebugVec = renderInit3DDebugPipeline(context, vert, frag, rfmt);
+
+    if (!pipeline3DDebug || !pipelineDebugVec)
         return;
 
     SDL_ReleaseGPUShader(context->dev, vert);
@@ -516,6 +522,14 @@ static inline void draw3DDebug(SDL_GPURenderPass* renderpass, SDL_GPUCommandBuff
     }
 }
 
+static inline void drawDebugVectors(SDL_GPURenderPass* renderpass, SDL_GPUCommandBuffer* cmdbuf)
+{
+    SDL_BindGPUGraphicsPipeline(renderpass, pipelineDebugVec);
+    SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera.rendermat, sizeof(mat4_t));
+    SDL_PushGPUVertexUniformData(cmdbuf, 1, debugvectors, sizeof(debugvectors));
+    SDL_DrawGPUPrimitives(renderpass, numvectors * 2, 1, 0, 0);
+}
+
 static inline void drawOdyssey2D(SDL_GPURenderPass* renderpass, SDL_GPUCommandBuffer* cmdbuf, u32 mode)
 {
     SDL_BindGPUGraphicsPipeline(renderpass, pipelineOdyssey);
@@ -525,12 +539,7 @@ static inline void drawOdyssey2D(SDL_GPURenderPass* renderpass, SDL_GPUCommandBu
     SDL_BindGPUFragmentSamplers(renderpass, 0, &(SDL_GPUTextureSamplerBinding) { .texture = odysseytexture, .sampler = odysseysampler }, 1);
 
     SDL_PushGPUVertexUniformData(cmdbuf, 0, &camera.rendermat, sizeof(mat4_t));
-    SDL_PushGPUVertexUniformData(cmdbuf, 1, mode ? &wall2_transform : &objects3D[1].transform, sizeof(mat4_t));
-
-    bool fucked = 0;
-
-    if (!objects3D[1].vtxbufoffset)     // TODO why tf is this happening?
-        fucked = 1;
+    SDL_PushGPUVertexUniformData(cmdbuf, 1, mode ? &wall2_transform : &scene3D_1[1].transform, sizeof(mat4_t));
 
     SDL_DrawGPUPrimitives(renderpass, mode ? 24 : 6, 1, mode ? 6 : 0, 0);
 }
@@ -737,6 +746,9 @@ void renderDraw(context_t* restrict con)
     if (m & RENDER_MODE_DEBUG_3D)
         draw3DDebug(renderpass, cmdbuf);
 
+    if (m & RENDER_MODE_DEBUG_VEC && numvectors)
+        drawDebugVectors(renderpass, cmdbuf);
+
     if (m & RENDER_MODE_UI_STATIC && numstaticuichars)
         drawStaticUI(renderpass);
 
@@ -847,12 +859,16 @@ void renderCleanup(void)
 //
 //  Objects
 //
-void rSetup3DVtxBuf(obj3D_t* objects, u32 numobjs)
+void rSetup3DVtxBuf(obj3D_t* objects)
 {
     if (!objects) {
         SDL_Log("[ERROR] setup3DVtxBuf null ref");
         return;
     }
+
+    u32 numobjs = *((u32*) objects - 2);
+
+    rAssert(numobjs < 16);
 
     if (!numobjs || numobjs > RENDER_OBJ3D_BUF_SIZE) {
         SDL_Log("[ERROR] Unable to create %ld 3D elements, max %ld", numobjs, RENDER_OBJ3D_BUF_SIZE);
@@ -1063,6 +1079,13 @@ void rRemoveHitbox(gameobj_t* object)
     }
 
     SDL_Log("[ERROR] Failed to remove hitbox, object has no hitbox");
+}
+
+f32* rDebugVectors(u32 numvec)
+{
+    numvectors = numvec;
+
+    return debugvectors;
 }
 
 void moveGameObject(const gameobj_t* restrict obj, f32 dx, f32 dy)
